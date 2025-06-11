@@ -1,4 +1,4 @@
-   import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Chart as ChartJS,
@@ -16,7 +16,7 @@ import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import 'chart.js/auto';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import { ArrowDownToDotIcon, BowArrow, List, Plus, PlusIcon } from 'lucide-react';
- 
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -29,7 +29,7 @@ ChartJS.register(
   Legend
 );
 
- const sidebarItems = [
+const sidebarItems = [
   {
     header: 'Tableau de bord',
     items: [{ icon: BowArrow, label: 'Aperçu général', href: '/admin/dashboard' }],
