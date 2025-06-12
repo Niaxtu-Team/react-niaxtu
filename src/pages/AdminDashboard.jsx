@@ -1,4 +1,4 @@
-   import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Chart as ChartJS,
@@ -16,7 +16,7 @@ import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import 'chart.js/auto';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import { ArrowDownToDotIcon, BowArrow, List, Plus, PlusIcon } from 'lucide-react';
- 
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -29,7 +29,7 @@ ChartJS.register(
   Legend
 );
 
- const sidebarItems = [
+const sidebarItems = [
   {
     header: 'Tableau de bord',
     items: [{ icon: BowArrow, label: 'Aperçu général', href: '/admin/dashboard' }],
@@ -99,6 +99,16 @@ ChartJS.register(
     header: 'Gestion des utilisateurs',
     items: [
       { icon: 'fa-users', label: 'Utilisateurs', href: '/admin/utilisateurs' },
+      {
+        icon: 'fa-user-shield',
+        label: 'Administrateurs',
+        submenu: [
+          { icon: PlusIcon, label: 'Nouvel administrateur', href: '/admin/gestion-admins/nouveau' },
+          { icon: List, label: 'Liste des admins', href: '/admin/gestion-admins' },
+          { icon: 'fa-key', label: 'Permissions', href: '/admin/gestion-admins/permissions' },
+          { icon: 'fa-history', label: 'Historique', href: '/admin/gestion-admins/historique' },
+        ],
+      },
     ],
   },
   {
@@ -312,7 +322,7 @@ export default function AdminDashboard() {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Styles globaux pour les animations */}
-      <style jsx global>{`
+      <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-5px); }
@@ -380,7 +390,7 @@ export default function AdminDashboard() {
               {section.items.map((item, idx) => (
                 <div key={idx}>
                   <button
-                    onClick={() => item.submenu && toggleMenu(item.label)}
+                    onClick={() => item.submenu ? toggleMenu(item.label) : navigate(item.href)}
                     className={`flex items-center w-full px-3 py-3 text-left rounded-lg transition-all duration-200 ${
                       openMenus[item.label] ? 'bg-gray-700' : 'hover:bg-gray-700'
                     } ${sidebarCollapsed ? 'justify-center' : ''}`}
@@ -417,14 +427,14 @@ export default function AdminDashboard() {
                           {sub.icon && <sub.icon  className={`fas ${item.icon} text-lg ${
                         item.submenu ? 'text-purple-300' : 'text-blue-300'
                       }`} />}
-                          <a
-                            href={sub.href}
-                            className="block px-3 py-2 text-sm hover:text-white text-gray-300 rounded-lg transition-colors duration-150 hover:bg-gray-600"
+                          <button
+                            onClick={() => navigate(sub.href)}
+                            className="block px-3 py-2 text-sm hover:text-white text-gray-300 rounded-lg transition-colors duration-150 hover:bg-gray-600 text-left w-full"
                             role="menuitem"
                           >
                             
                             {sub.label}
-                          </a>
+                          </button>
                         </li>
                       ))}
                     </ul>
