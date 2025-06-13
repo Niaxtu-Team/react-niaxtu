@@ -121,7 +121,7 @@ export const createDirection = async (req, res) => {
       creepar: req.user.uid
     };
 
-    const docRef = await db.collection('direction').add(directionData);
+    const docRef = await db.collection('directions').add(directionData);
     
     res.status(201).json({
       success: true,
@@ -280,9 +280,9 @@ export const getHierarchieComplete = async (req, res) => {
 // Obtenir l'arbre hiérarchique complet
 export const getArbreHierarchique = async (req, res) => {
   try {
-    // Récupérer tous les ministères actifs (sans orderBy pour éviter l'erreur d'index)
+    // Récupérer tous les ministères actifs
     const ministeresSnapshot = await db.collection('ministères')
-      .where('isActif', '==', true)
+      .where('actif', '==', true)
       .get();
     
     // Convertir en array et trier côté application
@@ -292,10 +292,10 @@ export const getArbreHierarchique = async (req, res) => {
     const arbre = [];
     
     for (const ministere of ministeresArray) {
-      // Récupérer les directions (sans orderBy pour éviter l'erreur d'index)
-      const directionsSnapshot = await db.collection('direction')
+      // Récupérer les directions
+      const directionsSnapshot = await db.collection('directions')
         .where('ministereId', '==', ministere.id)
-        .where('isActif', '==', true)
+        .where('actif', '==', true)
         .get();
       
       let directionsArray = directionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -303,33 +303,38 @@ export const getArbreHierarchique = async (req, res) => {
       ministere.directions = [];
       
       for (const direction of directionsArray) {
-        // Récupérer les services (sans orderBy pour éviter l'erreur d'index)
-        const servicesSnapshot = await db.collection('service')
+        // Récupérer les services
+        const servicesSnapshot = await db.collection('services')
           .where('directionId', '==', direction.id)
-          .where('isActif', '==', true)
+          .where('actif', '==', true)
           .get();
         
         let servicesArray = servicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         servicesArray.sort((a, b) => a.nom.localeCompare(b.nom));
-        direction.services = [];
-        
-        for (const service of servicesArray) {
-          // Récupérer les bureaux (sans orderBy pour éviter l'erreur d'index)
-          const bureauxSnapshot = await db.collection('bureau')
-            .where('serviceId', '==', service.id)
-            .where('isActif', '==', true)
-            .get();
-          
-          let bureauxArray = bureauxSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          bureauxArray.sort((a, b) => a.nom.localeCompare(b.nom));
-          service.bureaux = bureauxArray;
-          direction.services.push(service);
-        }
-        
+        direction.services = servicesArray;
         ministere.directions.push(direction);
       }
       
-      arbre.push(ministere);
+      arbre.push({
+        id: ministere.id,
+        nom: ministere.nom,
+        code: ministere.code,
+        description: ministere.description,
+        contact: ministere.contact,
+        directions: ministere.directions.map(direction => ({
+          id: direction.id,
+          nom: direction.nom,
+          code: direction.code,
+          description: direction.description,
+          services: direction.services.map(service => ({
+            id: service.id,
+            nom: service.nom,
+            code: service.code,
+            description: service.description,
+            localisation: service.localisation
+          }))
+        }))
+      });
     }
     
     res.json({
@@ -338,8 +343,7 @@ export const getArbreHierarchique = async (req, res) => {
       statistiques: {
         ministères: arbre.length,
         directions: arbre.reduce((acc, m) => acc + m.directions.length, 0),
-        services: arbre.reduce((acc, m) => acc + m.directions.reduce((acc2, d) => acc2 + d.services.length, 0), 0),
-        bureaux: arbre.reduce((acc, m) => acc + m.directions.reduce((acc2, d) => acc2 + d.services.reduce((acc3, s) => acc3 + s.bureaux.length, 0), 0), 0)
+        services: arbre.reduce((acc, m) => acc + m.directions.reduce((acc2, d) => acc2 + d.services.length, 0), 0)
       }
     });
 
@@ -371,7 +375,7 @@ export const rechercherDansHierarchie = async (req, res) => {
       bureaux: []
     };
     
-    const collections = type ? [type] : ['ministères', 'direction', 'service', 'bureau'];
+    const collections = type ? [type] : ['ministères', 'directions', 'services', 'bureaux'];
     const searchLower = searchQuery.toLowerCase();
     
     for (const collection of collections) {
