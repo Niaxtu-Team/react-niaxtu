@@ -47,7 +47,7 @@ export default function ListeTypesPlainte() {
         ...(filters.sectorId !== 'all' && { sectorId: filters.sectorId })
       });
 
-      const response = await apiService(`/types/complaints?${params}`);
+      const response = await apiService.get(`/types/complaints?${params}`);
       
       if (response.success) {
         setTypes(response.data || []);
@@ -66,9 +66,7 @@ export default function ListeTypesPlainte() {
   // Activer/désactiver un type
   const handleToggleType = async (typeId, currentStatus) => {
     try {
-      const response = await apiService(`/types/complaints/${typeId}/toggle`, {
-        method: 'PUT'
-      });
+      const response = await apiService.put(`/types/complaints/${typeId}/toggle`);
 
       if (response.success) {
         setTypes(prev => prev.map(type => 
@@ -89,9 +87,7 @@ export default function ListeTypesPlainte() {
     }
 
     try {
-      const response = await apiService(`/types/complaints/${typeId}`, {
-        method: 'DELETE'
-      });
+      const response = await apiService.delete(`/types/complaints/${typeId}`);
 
       if (response.success) {
         setTypes(prev => prev.filter(type => type.id !== typeId));

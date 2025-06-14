@@ -43,7 +43,7 @@ export default function NouveauTypePlainte() {
 
   const fetchSecteurs = async () => {
     try {
-      const response = await apiService('/sectors');
+      const response = await apiService.get('/sectors');
       if (response.success) {
         setSecteurs(response.data || []);
       }
@@ -84,10 +84,7 @@ export default function NouveauTypePlainte() {
         code: formData.code || formData.name.toUpperCase().replace(/\s+/g, '_'),
       };
 
-      const response = await apiService('/types/complaints', {
-        method: 'POST',
-        body: JSON.stringify(submitData)
-      });
+      const response = await apiService.post('/types/complaints', submitData);
 
       if (response.success) {
         setSuccess(true);

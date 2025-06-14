@@ -43,7 +43,7 @@ export const useStats = () => {
       const response = await apiService.get('/admin/stats');
       
       if (response.success) {
-        setStats(response.stats);
+        setStats(response.data);
       } else {
         throw new Error(response.message || 'Erreur lors du chargement des statistiques');
       }
@@ -62,11 +62,11 @@ export const useStats = () => {
       if (response.success) {
         setStats(prev => ({
           ...prev,
-          complaints: response.stats
+          complaints: response.data
         }));
       }
       
-      return response.stats;
+      return response.data;
     } catch (err) {
       console.error('Erreur statistiques plaintes:', err);
       throw err;
@@ -80,11 +80,11 @@ export const useStats = () => {
       if (response.success) {
         setStats(prev => ({
           ...prev,
-          users: response.stats
+          users: response.data
         }));
       }
       
-      return response.stats;
+      return response.data;
     } catch (err) {
       console.error('Erreur statistiques utilisateurs:', err);
       throw err;
@@ -98,11 +98,11 @@ export const useStats = () => {
       if (response.success) {
         setStats(prev => ({
           ...prev,
-          structures: response.stats
+          structures: response.data
         }));
       }
       
-      return response.stats;
+      return response.data;
     } catch (err) {
       console.error('Erreur statistiques structures:', err);
       throw err;
@@ -116,11 +116,11 @@ export const useStats = () => {
       if (response.success) {
         setStats(prev => ({
           ...prev,
-          performance: response.stats
+          performance: response.data
         }));
       }
       
-      return response.stats;
+      return response.data;
     } catch (err) {
       console.error('Erreur statistiques performance:', err);
       throw err;

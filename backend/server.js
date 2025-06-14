@@ -19,6 +19,7 @@ import organizationRoutes from './routes/organization.js';
 import plaignantRoutes from './routes/plaignant.js';
 import plainteRoutes from './routes/plainte.js';
 import testTokenRoutes from './routes/test-token.js';
+import statisticsRoutes from './routes/statistics.js';
 
 // Importer Firebase pour tester la connexion
 import { db } from './config/firebase.js';
@@ -189,6 +190,7 @@ app.use('/api/organization', organizationRoutes);
 app.use('/api/plaignant', plaignantRoutes);
 app.use('/api/plainte', plainteRoutes);
 app.use('/api/test-token', testTokenRoutes);
+app.use('/api/statistics', statisticsRoutes);
 
 // Route par défaut
 app.get('/', (req, res) => {
@@ -199,88 +201,77 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/health',
       documentation: '/api-docs',
-      testToken: '/api/test-token (POST pour générer, GET /info pour vérifier)',
-      users: '/api/users',
-      complaints: '/api/complaints',
-      data: '/api/data',
-      admin: '/api/admin',
-      sectors: '/api/sectors',
-      structures: '/api/structures',
-      types: '/api/types',
-      setup: '/api/setup (Usage unique)',
-      auth: '/api/auth',
-      organization: '/api/organization',
-      plaignant: '/api/plaignant',
-      plainte: '/api/plainte'
+      help: '/api/help/tokens'
     },
     features: [
-      'Authentification Firebase',
-      'Tokens de test pour développement',
-      'Gestion des rôles et permissions',
-      'CRUD complet pour les plaintes',
-      'Administration avancée',
+      'Gestion des plaintes',
+      'Administration des utilisateurs',
+      'Système de permissions',
+      'Authentification JWT',
       'Documentation Swagger',
-      'Export de données',
-      'Statistiques en temps réel'
-    ],
-    testingGuide: {
-      step1: 'POST /api/test-token avec {"role": "plaignant"} ou {"role": "admin"}',
-      step2: 'Copier le token retourné',
-      step3: 'Utiliser le header: Authorization: Bearer [TOKEN]',
-      step4: 'Tester les routes protégées'
-    }
+      'Tests automatisés'
+    ]
   });
 });
 
-// Middleware de gestion d'erreurs 404
+// Middleware de gestion d'erreurs
+app.use((err, req, res, next) => {
+  console.error('Erreur serveur:', err.stack);
+  res.status(500).json({
+    success: false,
+    message: 'Erreur interne du serveur',
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Une erreur est survenue'
+  });
+});
+
+// Middleware pour les routes non trouvées
 app.use('*', (req, res) => {
   res.status(404).json({
-    error: 'Route non trouvée',
+    success: false,
+    message: 'Route non trouvée',
     path: req.originalUrl,
-    method: req.method
+    method: req.method,
+    suggestion: 'Consultez la documentation API à /api-docs'
   });
 });
 
-// Middleware de gestion d'erreurs globales
-app.use((error, req, res, next) => {
-  console.error('Erreur serveur:', error);
-  
-  res.status(error.status || 500).json({
-    error: error.message || 'Erreur interne du serveur',
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
-  });
-});
-
-// Fonction pour tester la connexion Firestore
+// Test de connexion à Firestore au démarrage
 const testFirestoreConnection = async () => {
   try {
-    // Tenter une opération simple pour tester la connexion
-    const testCollection = db.collection('_test');
-    await testCollection.limit(1).get();
-    console.log('🗄️ CONNEXION FIRESTORE RÉUSSIE !');
-    return true;
+    console.log('🔥 Test de connexion à Firestore...');
+    
+    // Test simple de lecture
+    const testDoc = await db.collection('test').limit(1).get();
+    console.log('✅ Connexion à Firestore réussie');
+    
+    // Afficher quelques statistiques
+    const collections = ['admin', 'complaints', 'sectors', 'structures'];
+    for (const collectionName of collections) {
+      try {
+        const snapshot = await db.collection(collectionName).limit(1).get();
+        console.log(`📊 Collection '${collectionName}': accessible`);
+      } catch (error) {
+        console.log(`⚠️  Collection '${collectionName}': ${error.message}`);
+      }
+    }
+    
   } catch (error) {
-    console.error('❌ ERREUR CONNEXION FIRESTORE:', error.message);
-    return false;
+    console.error('❌ Erreur de connexion à Firestore:', error.message);
+    console.log('🔧 Vérifiez votre configuration Firebase dans .env');
   }
 };
 
 // Démarrer le serveur
 app.listen(PORT, async () => {
-  console.log('='.repeat(50));
-  console.log(`🚀 SERVEUR NIAXTU BACKEND DÉMARRÉ`);
-  console.log(`📡 Port: ${PORT}`);
-  console.log(`🌍 Santé: http://localhost:${PORT}/health`);
-  console.log(`📚 Documentation: http://localhost:${PORT}/api-docs`);
-  console.log(`📋 API: http://localhost:${PORT}/api`);
-  console.log(`👑 Admin: http://localhost:${PORT}/api/admin`);
-  console.log('='.repeat(50));
+  console.log(`🚀 Serveur Niaxtu démarré sur le port ${PORT}`);
+  console.log(`📚 Documentation API: http://localhost:${PORT}/api-docs`);
+  console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+  console.log(`🔐 Guide tokens: http://localhost:${PORT}/api/help/tokens`);
   
-  // Tester la connexion Firebase
-  console.log('🔍 Test des connexions...');
+  // Tester la connexion à Firestore
   await testFirestoreConnection();
-  console.log('✅ BACKEND PRÊT À UTILISER !');
-  console.log('='.repeat(50));
+  
+  console.log('✨ Serveur prêt à recevoir des requêtes');
 });
 
 export default app; 

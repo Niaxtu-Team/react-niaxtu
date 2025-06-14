@@ -20,9 +20,8 @@ import {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { stats, loading, error, refresh } = useStats();
+  const { stats, loading } = useStats();
   const [recentActivity, setRecentActivity] = useState([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Charger les activités récentes
   useEffect(() => {
@@ -61,16 +60,6 @@ export default function Dashboard() {
       setRecentActivity(mockActivity);
     } catch (error) {
       console.error('Erreur chargement activités:', error);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await refresh();
-      await fetchRecentActivity();
-    } finally {
-      setIsRefreshing(false);
     }
   };
 
@@ -162,7 +151,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Plaintes</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.complaints.total.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-gray-900">{stats?.complaints?.total?.toLocaleString() || '0'}</p>
               </div>
               <div className="bg-blue-100 p-3 rounded-lg">
                 <AlertTriangle className="w-8 h-8 text-blue-600" />
@@ -170,7 +159,7 @@ export default function Dashboard() {
             </div>
             <div className="mt-4 flex items-center text-sm">
               <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-              <span className="text-green-500 font-medium">+{stats.complaints.today}</span>
+              <span className="text-green-500 font-medium">+{stats?.complaints?.today || 0}</span>
               <span className="text-gray-600 ml-1">aujourd'hui</span>
             </div>
           </div>
@@ -180,7 +169,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">En Attente</p>
-                <p className="text-3xl font-bold text-orange-600">{stats.complaints.pending}</p>
+                <p className="text-3xl font-bold text-orange-600">{stats?.complaints?.pending || 0}</p>
               </div>
               <div className="bg-orange-100 p-3 rounded-lg">
                 <Clock className="w-8 h-8 text-orange-600" />
@@ -196,7 +185,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Taux Résolution</p>
-                <p className="text-3xl font-bold text-green-600">{stats.performance.resolutionRate}%</p>
+                <p className="text-3xl font-bold text-green-600">{stats?.performance?.resolutionRate || 0}%</p>
               </div>
               <div className="bg-green-100 p-3 rounded-lg">
                 <CheckCircle className="w-8 h-8 text-green-600" />
@@ -213,7 +202,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Utilisateurs Actifs</p>
-                <p className="text-3xl font-bold text-purple-600">{stats.users.active.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-purple-600">{stats?.users?.active?.toLocaleString() || '0'}</p>
               </div>
               <div className="bg-purple-100 p-3 rounded-lg">
                 <Users className="w-8 h-8 text-purple-600" />
@@ -221,7 +210,7 @@ export default function Dashboard() {
             </div>
             <div className="mt-4 flex items-center text-sm">
               <PlusCircle className="w-4 h-4 text-purple-500 mr-1" />
-              <span className="text-purple-500 font-medium">+{stats.users.newThisMonth}</span>
+              <span className="text-purple-500 font-medium">+{stats?.users?.newThisMonth || 0}</span>
               <span className="text-gray-600 ml-1">ce mois</span>
             </div>
           </div>
@@ -242,11 +231,11 @@ export default function Dashboard() {
                   <span className="text-sm text-gray-600">Résolues</span>
                 </div>
                 <div className="flex items-center">
-                  <span className="text-sm font-medium text-gray-900 mr-2">{stats.complaints.resolved}</span>
+                  <span className="text-sm font-medium text-gray-900 mr-2">{stats?.complaints?.resolved || 0}</span>
                   <div className="w-32 bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-green-500 h-2 rounded-full" 
-                      style={{ width: `${(stats.complaints.resolved / stats.complaints.total) * 100}%` }}
+                      style={{ width: `${((stats?.complaints?.resolved || 0) / (stats?.complaints?.total || 1)) * 100}%` }}
                     ></div>
                   </div>
                 </div>
@@ -258,11 +247,11 @@ export default function Dashboard() {
                   <span className="text-sm text-gray-600">En traitement</span>
                 </div>
                 <div className="flex items-center">
-                  <span className="text-sm font-medium text-gray-900 mr-2">{stats.complaints.inProgress}</span>
+                  <span className="text-sm font-medium text-gray-900 mr-2">{stats?.complaints?.inProgress || 0}</span>
                   <div className="w-32 bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-blue-500 h-2 rounded-full" 
-                      style={{ width: `${(stats.complaints.inProgress / stats.complaints.total) * 100}%` }}
+                      style={{ width: `${((stats?.complaints?.inProgress || 0) / (stats?.complaints?.total || 1)) * 100}%` }}
                     ></div>
                   </div>
                 </div>
@@ -274,11 +263,11 @@ export default function Dashboard() {
                   <span className="text-sm text-gray-600">En attente</span>
                 </div>
                 <div className="flex items-center">
-                  <span className="text-sm font-medium text-gray-900 mr-2">{stats.complaints.pending}</span>
+                  <span className="text-sm font-medium text-gray-900 mr-2">{stats?.complaints?.pending || 0}</span>
                   <div className="w-32 bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-orange-500 h-2 rounded-full" 
-                      style={{ width: `${(stats.complaints.pending / stats.complaints.total) * 100}%` }}
+                      style={{ width: `${((stats?.complaints?.pending || 0) / (stats?.complaints?.total || 1)) * 100}%` }}
                     ></div>
                   </div>
                 </div>
@@ -290,11 +279,11 @@ export default function Dashboard() {
                   <span className="text-sm text-gray-600">Rejetées</span>
                 </div>
                 <div className="flex items-center">
-                  <span className="text-sm font-medium text-gray-900 mr-2">{stats.complaints.rejected}</span>
+                  <span className="text-sm font-medium text-gray-900 mr-2">{stats?.complaints?.rejected || 0}</span>
                   <div className="w-32 bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-red-500 h-2 rounded-full" 
-                      style={{ width: `${(stats.complaints.rejected / stats.complaints.total) * 100}%` }}
+                      style={{ width: `${((stats?.complaints?.rejected || 0) / (stats?.complaints?.total || 1)) * 100}%` }}
                     ></div>
                   </div>
                 </div>
@@ -341,7 +330,7 @@ export default function Dashboard() {
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600">Temps de réponse moyen</span>
-                  <span className="font-medium">{stats.performance.responseTime}h</span>
+                  <span className="font-medium">{stats?.performance?.responseTime || 0}h</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div className="bg-blue-600 h-2 rounded-full" style={{ width: '70%' }}></div>
@@ -351,10 +340,10 @@ export default function Dashboard() {
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600">Taux de satisfaction</span>
-                  <span className="font-medium">{stats.performance.satisfactionRate}%</span>
+                  <span className="font-medium">{stats?.performance?.satisfactionRate || 0}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-600 h-2 rounded-full" style={{ width: `${stats.performance.satisfactionRate}%` }}></div>
+                  <div className="bg-green-600 h-2 rounded-full" style={{ width: `${stats?.performance?.satisfactionRate || 0}%` }}></div>
                 </div>
               </div>
             </div>
@@ -366,19 +355,19 @@ export default function Dashboard() {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Ministères</span>
-                <span className="font-medium text-gray-900">{stats.structures.ministries}</span>
+                <span className="font-medium text-gray-900">{stats?.structures?.ministries || 0}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Directions</span>
-                <span className="font-medium text-gray-900">{stats.structures.directions}</span>
+                <span className="font-medium text-gray-900">{stats?.structures?.directions || 0}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Services</span>
-                <span className="font-medium text-gray-900">{stats.structures.services}</span>
+                <span className="font-medium text-gray-900">{stats?.structures?.services || 0}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Secteurs</span>
-                <span className="font-medium text-gray-900">{stats.structures.sectors}</span>
+                <span className="font-medium text-gray-900">{stats?.structures?.sectors || 0}</span>
               </div>
             </div>
           </div>
@@ -389,19 +378,19 @@ export default function Dashboard() {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Total utilisateurs</span>
-                <span className="font-medium text-gray-900">{stats.users.total.toLocaleString()}</span>
+                <span className="font-medium text-gray-900">{stats?.users?.total?.toLocaleString() || '0'}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Utilisateurs actifs</span>
-                <span className="font-medium text-gray-900">{stats.users.active.toLocaleString()}</span>
+                <span className="font-medium text-gray-900">{stats?.users?.active?.toLocaleString() || '0'}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Administrateurs</span>
-                <span className="font-medium text-gray-900">{stats.users.admins}</span>
+                <span className="font-medium text-gray-900">{stats?.users?.admins || 0}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Nouveaux ce mois</span>
-                <span className="font-medium text-green-600">+{stats.users.newThisMonth}</span>
+                <span className="font-medium text-green-600">+{stats?.users?.newThisMonth || 0}</span>
               </div>
             </div>
           </div>

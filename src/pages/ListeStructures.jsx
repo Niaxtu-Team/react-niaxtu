@@ -39,7 +39,7 @@ export default function ListeStructures() {
   const fetchMinisteres = async () => {
     try {
       setLoading(true);
-      const response = await apiService('/structures/ministeres');
+      const response = await apiService.get('/structures/ministeres');
       setMinisteres(response.data || []);
     } catch (error) {
       console.error('Erreur chargement ministères:', error);
@@ -52,7 +52,7 @@ export default function ListeStructures() {
   // Récupérer toutes les directions
   const fetchAllDirections = async () => {
     try {
-      const response = await apiService('/structures/directions?withStats=true');
+      const response = await apiService.get('/structures/directions?withStats=true');
       setDirections(response.data || []);
     } catch (error) {
       console.error('Erreur chargement toutes les directions:', error);
@@ -62,7 +62,7 @@ export default function ListeStructures() {
   // Récupérer tous les services
   const fetchAllServices = async () => {
     try {
-      const response = await apiService('/structures/services?withStats=true');
+      const response = await apiService.get('/structures/services?withStats=true');
       setServices(response.data || []);
     } catch (error) {
       console.error('Erreur chargement tous les services:', error);
@@ -72,15 +72,12 @@ export default function ListeStructures() {
   // Créer un ministère
   const createMinistere = async () => {
     try {
-      await apiService('/structures/ministeres', {
-        method: 'POST',
-        body: JSON.stringify({
-          nom: formData.nom,
-          description: formData.description,
-          code: formData.code,
-          contact: formData.contact,
-          actif: true
-        })
+      await apiService.post('/structures/ministeres', {
+        nom: formData.nom,
+        description: formData.description,
+        code: formData.code,
+        contact: formData.contact,
+        actif: true
       });
       
       alert('Ministère créé avec succès');
@@ -95,15 +92,12 @@ export default function ListeStructures() {
   // Créer une direction
   const createDirection = async () => {
     try {
-      await apiService('/structures/directions', {
-        method: 'POST',
-        body: JSON.stringify({
-          nom: formData.nom,
-          description: formData.description,
-          code: formData.code,
-          ministereId: formData.ministereId,
-          actif: true
-        })
+      await apiService.post('/structures/directions', {
+        nom: formData.nom,
+        description: formData.description,
+        code: formData.code,
+        ministereId: formData.ministereId,
+        actif: true
       });
       
       alert('Direction créée avec succès');
@@ -118,17 +112,14 @@ export default function ListeStructures() {
   // Créer un service
   const createService = async () => {
     try {
-      await apiService('/structures/services', {
-        method: 'POST',
-        body: JSON.stringify({
-          nom: formData.nom,
-          description: formData.description,
-          code: formData.code,
-          ministereId: formData.ministereId,
-          directionId: formData.directionId,
-          localisation: formData.localisation,
-          actif: true
-        })
+      await apiService.post('/structures/services', {
+        nom: formData.nom,
+        description: formData.description,
+        code: formData.code,
+        ministereId: formData.ministereId,
+        directionId: formData.directionId,
+        localisation: formData.localisation,
+        actif: true
       });
       
       alert('Service créé avec succès');
@@ -147,9 +138,7 @@ export default function ListeStructures() {
     }
 
     try {
-      await apiService(`/structures/${type}s/${id}`, {
-        method: 'DELETE'
-      });
+      await apiService.delete(`/structures/${type}s/${id}`);
       
       alert(`${type} supprimé avec succès`);
       

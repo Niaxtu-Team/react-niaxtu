@@ -134,6 +134,7 @@ const sidebarItems = [
     color: 'text-indigo-400',
     children: [
       { label: 'Statistiques', href: '/admin/rapports/statistiques', icon: BarChart3 },
+      { label: 'Statistiques Complètes', href: '/admin/rapports/statistiques-completes', icon: BarChart3 },
       { label: 'Exporter Données', href: '/admin/rapports/export', icon: Download },
       { label: 'Page 2 (Test)', href: '/admin/page2', icon: FileText }
     ]

@@ -24,6 +24,7 @@ import ApercuGeneral from './pages/ApercuGeneral'
 import Utilisateurs from './pages/Utilisateurs'
 import TestUsers from './pages/TestUsers'
 import Statistiques from './pages/Statistiques'
+import StatistiquesCompletes from './pages/StatistiquesCompletes'
 import ExporterDonnees from './pages/ExporterDonnees'
 import ProfilAdmin from './pages/ProfilAdmin'
 import { ThemeProvider } from './pages/ThemeContext'
@@ -139,6 +140,11 @@ function App() {
               <Route path="rapports/statistiques" element={
                 <ProtectedRoute requiredPermission="VIEW_REPORTS">
                   <Statistiques />
+                </ProtectedRoute>
+              } />
+              <Route path="rapports/statistiques-completes" element={
+                <ProtectedRoute requiredPermission="VIEW_REPORTS">
+                  <StatistiquesCompletes />
                 </ProtectedRoute>
               } />
               <Route path="rapports/export" element={

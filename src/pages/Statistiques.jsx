@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import React, { useState, useEffect } from 'react';
+import { Line, Bar, Doughnut, Radar, PolarArea } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -8,11 +8,46 @@ import {
   LineElement,
   ArcElement,
   BarElement,
+  RadialLinearScale,
   Title,
   Tooltip,
   Legend,
+  Filler
 } from 'chart.js';
-import { CalendarDays, TrendingUp, Users, AlertTriangle } from 'lucide-react';
+import { 
+  CalendarDays, 
+  TrendingUp, 
+  Users, 
+  AlertTriangle,
+  Activity,
+  BarChart3,
+  PieChart,
+  Target,
+  Clock,
+  Award,
+  Zap,
+  Filter,
+  Download,
+  RefreshCw,
+  Eye,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Timer,
+  Globe,
+  Building,
+  UserCheck,
+  TrendingDown,
+  Sparkles,
+  Star,
+  Shield
+} from 'lucide-react';
+import { useAdvancedStats } from '../hooks/useAdvancedStats';
+import { usePlaintes } from '../hooks/usePlaintes';
+import { useAuth } from '../hooks/useAuth';
 
 ChartJS.register(
   CategoryScale,
@@ -21,9 +56,11 @@ ChartJS.register(
   LineElement,
   ArcElement,
   BarElement,
+  RadialLinearScale,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 const stats = [
