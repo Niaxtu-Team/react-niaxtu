@@ -1,138 +1,83 @@
 import { useState } from 'react';
 import { Tag } from 'lucide-react';
-import { AdminPageWrapper } from '../components/layout';
-import { FormField } from '../components/forms';
-import { Button } from '../components/ui';
-import { validateRequired, validateLength } from '../utils';
 
 export default function NouveauTypePlainte() {
-  const [formData, setFormData] = useState({
-    nom: '',
-    description: ''
-  });
-  const [errors, setErrors] = useState({});
+  const [nom, setNom] = useState('');
+  const [description, setDescription] = useState('');
   const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (name, value) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
-    // Effacer l'erreur du champ modifié
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: null }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-    
-    const nomError = validateRequired(formData.nom, 'Le nom du type');
-    if (nomError) newErrors.nom = nomError;
-    
-    const lengthError = validateLength(formData.nom, 2, 50, 'Le nom du type');
-    if (lengthError) newErrors.nom = lengthError;
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      setMessage('Veuillez corriger les erreurs du formulaire');
-      setTimeout(() => setMessage(''), 3000);
+    if (!nom.trim()) {
+      setMessage('Le nom du type de plainte est requis.');
       return;
     }
-
-    setIsLoading(true);
-    
-    try {
-      // Simulation d'une API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Reset form
-      setFormData({ nom: '', description: '' });
-      setMessage('Type de plainte créé avec succès !');
-      setTimeout(() => setMessage(''), 2500);
-    } catch (error) {
-      setMessage('Une erreur est survenue');
-      setTimeout(() => setMessage(''), 3000);
-    } finally {
-      setIsLoading(false);
-    }
+    setMessage('Type de plainte créé avec succès !');
+    setNom('');
+    setDescription('');
+    setTimeout(() => setMessage(''), 2500);
   };
 
   return (
-    <AdminPageWrapper title="Nouveau type de plainte">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center mb-6">
-            <div className="bg-indigo-100 p-3 rounded-xl">
-              <Tag className="w-6 h-6 text-indigo-600" />
-            </div>
-            <div className="ml-4">
-              <h2 className="text-xl font-semibold text-gray-900">Créer un nouveau type</h2>
-              <p className="text-sm text-gray-500">Ajoutez un nouveau type de plainte au système</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <FormField
-              label="Nom du type"
-              name="nom"
-              type="text"
-              value={formData.nom}
-              onChange={handleChange}
-              placeholder="Ex: Problème de transport"
-              required
-              error={errors.nom}
-              helpText="Le nom doit être unique et descriptif"
-            />
-            
-            <FormField
-              label="Description"
-              name="description"
-              type="textarea"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Description détaillée du type de plainte..."
-              rows={4}
-              helpText="Description optionnelle pour clarifier le type de plainte"
-            />
-
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => window.history.back()}
-              >
-                Annuler
-              </Button>
-              
-              <Button
-                type="submit"
-                variant="primary"
-                icon={Tag}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Création...' : 'Créer le type'}
-              </Button>
-            </div>
-
-            {message && (
-              <div className="mt-4 text-center animate-bounce-in">
-                <div className={`inline-flex items-center px-4 py-2 rounded-lg font-medium ${
-                  message.includes('erreur') || message.includes('Erreur')
-                    ? 'bg-red-50 text-red-700 border border-red-200'
-                    : 'bg-green-50 text-green-700 border border-green-200'
-                }`}>
-                  {message}
-                </div>
-              </div>
-            )}
-          </form>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-lg p-8 rounded-2xl shadow-xl bg-white border border-gray-100 animate-fade-in">
+        <div className="flex items-center mb-6">
+          <span className="bg-indigo-100 p-3 rounded-xl shadow text-indigo-500">
+            <Tag className="w-7 h-7" />
+          </span>
+          <h2 className="ml-4 text-3xl font-extrabold text-gray-800 tracking-tight">Nouveau type de plainte</h2>
         </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-gray-600 font-medium mb-1">Nom du type *</label>
+            <input
+              type="text"
+              value={nom}
+              onChange={e => setNom(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
+              placeholder="Nom du type"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-gray-600 font-medium mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition resize-none min-h-[60px]"
+              placeholder="Description"
+              rows={3}
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full flex items-center justify-center gap-2 bg-indigo-100 text-indigo-700 font-bold py-3 rounded-xl shadow hover:bg-indigo-200 transition-all duration-200 text-lg"
+          >
+            <Tag className="w-5 h-5" />
+            Créer le type
+          </button>
+          {message && (
+            <div className="mt-4 text-center animate-bounce-in">
+              <span className="inline-block bg-green-100 text-green-700 px-4 py-2 rounded-full shadow font-semibold">
+                {message}
+              </span>
+            </div>
+          )}
+        </form>
+        <style>{`
+          @keyframes fade-in {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-fade-in { animation: fade-in 0.7s cubic-bezier(.4,2,.6,1) both; }
+          @keyframes bounce-in {
+            0% { transform: scale(0.7); opacity: 0; }
+            60% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+          }
+          .animate-bounce-in { animation: bounce-in 0.7s cubic-bezier(.4,2,.6,1) both; }
+        `}</style>
       </div>
-    </AdminPageWrapper>
+    </div>
   );
 } 

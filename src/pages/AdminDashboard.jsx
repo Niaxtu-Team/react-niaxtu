@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Outlet, Link } from 'react-router-dom';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -32,7 +32,7 @@ ChartJS.register(
 const sidebarItems = [
   {
     header: 'Tableau de bord',
-    items: [{ icon: BowArrow, label: 'Aperçu général', href: '/admin/dashboard' }],
+    items: [{ icon: BowArrow, label: 'Aperçu général', href: '/admin' }],
   },
   {
     header: 'Gestion des contenus',
@@ -99,16 +99,6 @@ const sidebarItems = [
     header: 'Gestion des utilisateurs',
     items: [
       { icon: 'fa-users', label: 'Utilisateurs', href: '/admin/utilisateurs' },
-      {
-        icon: 'fa-user-shield',
-        label: 'Administrateurs',
-        submenu: [
-          { icon: PlusIcon, label: 'Nouvel administrateur', href: '/admin/gestion-admins/nouveau' },
-          { icon: List, label: 'Liste des admins', href: '/admin/gestion-admins' },
-          { icon: 'fa-key', label: 'Permissions', href: '/admin/gestion-admins/permissions' },
-          { icon: 'fa-history', label: 'Historique', href: '/admin/gestion-admins/historique' },
-        ],
-      },
     ],
   },
   {
@@ -118,6 +108,32 @@ const sidebarItems = [
       { icon: 'fa-file-export', label: 'Exporter des données', href: '/admin/rapports/export' },
     ],
   },
+];
+
+// Liste des destinations pour la recherche universelle
+const searchOptions = [
+  { label: 'Aperçu général', path: '/admin' },
+  { label: 'Nouveau secteur', path: '/admin/secteurs/nouveau' },
+  { label: 'Liste des secteurs', path: '/admin/secteurs' },
+  { label: 'Nouveau sous-secteur', path: '/admin/sous-secteurs/nouveau' },
+  { label: 'Liste des sous-secteurs', path: '/admin/sous-secteurs' },
+  { label: 'Nouvelle structure', path: '/admin/structures/nouveau' },
+  { label: 'Liste des structures', path: '/admin/structures' },
+  { label: 'Nouveau type de plainte', path: '/admin/plaintes/types/nouveau' },
+  { label: 'Liste des types de plainte', path: '/admin/plaintes/types' },
+  { label: 'Nouveau type de cible', path: '/admin/cibles/types/nouveau' },
+  { label: 'Liste des types de cible', path: '/admin/cibles/types' },
+  { label: 'Toutes les plaintes', path: '/admin/plaintes' },
+  { label: 'Plaintes en attente', path: '/admin/plaintes/en-attente' },
+  { label: 'Plaintes en traitement', path: '/admin/plaintes/en-traitement' },
+  { label: 'Plaintes résolues', path: '/admin/plaintes/resolues' },
+  { label: 'Plaintes rejetées', path: '/admin/plaintes/rejetees' },
+  { label: 'Utilisateurs externes', path: '/admin/utilisateurs' },
+  { label: 'Comptes admin', path: '/admin/utilisateurs?tab=admins' },
+  { label: 'Statistiques', path: '/admin/rapports/statistiques' },
+  { label: 'Exporter des données', path: '/admin/rapports/export' },
+  { label: 'Mon profil', path: '/admin/profil' },
+  { label: 'Paramètres', path: '/admin/parametres' },
 ];
 
 export default function AdminDashboard() {
@@ -132,6 +148,9 @@ export default function AdminDashboard() {
   const notificationsRef = useRef(null);
   const profileRef = useRef(null);
   const mainRef = useRef(null);
+  const [searchValue, setSearchValue] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   const toggleMenu = (label) => {
     setOpenMenus((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -319,21 +338,30 @@ export default function AdminDashboard() {
     }
   };
 
-  return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Styles globaux pour les animations */}
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-5px); }
-        }
-        .animate-float { animation: float 3s ease-in-out infinite; }
-        .animate-float-delay-1 { animation: float 3s ease-in-out infinite 0.5s; }
-        .animate-float-delay-2 { animation: float 3s ease-in-out infinite 1s; }
-        .animate-float-delay-3 { animation: float 3s ease-in-out infinite 1.5s; }
-        .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-      `}</style>
+  // Recherche universelle
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchValue(value);
+    if (value.trim() === '') {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+    const results = searchOptions.filter(opt =>
+      opt.label.toLowerCase().includes(value.toLowerCase())
+    );
+    setSearchResults(results);
+    setShowSearchResults(true);
+  };
 
+  const handleSearchSelect = (path) => {
+    setSearchValue('');
+    setShowSearchResults(false);
+    navigate(path);
+  };
+
+  return (
+    <div className="flex h-screen overflow-hidden">
       {/* Modal de confirmation de déconnexion */}
       {showLogoutModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
@@ -389,55 +417,73 @@ export default function AdminDashboard() {
               )}
               {section.items.map((item, idx) => (
                 <div key={idx}>
-                  <button
-                    onClick={() => item.submenu ? toggleMenu(item.label) : navigate(item.href)}
-                    className={`flex items-center w-full px-3 py-3 text-left rounded-lg transition-all duration-200 ${
-                      openMenus[item.label] ? 'bg-gray-700' : 'hover:bg-gray-700'
-                    } ${sidebarCollapsed ? 'justify-center' : ''}`}
-                    aria-expanded={!!openMenus[item.label]}
-                    aria-controls={`${item.label}-submenu`}
-                  >
-                    <i
-                      className={`fas ${item.icon} text-lg ${
-                        item.submenu ? 'text-purple-300' : 'text-blue-300'
+                  {item.submenu ? (
+                    <>
+                      <button
+                        onClick={() => toggleMenu(item.label)}
+                        className={`flex items-center w-full px-3 py-3 text-left rounded-lg transition-all duration-200 ${
+                          openMenus[item.label] ? 'bg-gray-700' : 'hover:bg-gray-700'
+                        } ${sidebarCollapsed ? 'justify-center' : ''}`}
+                        aria-expanded={!!openMenus[item.label]}
+                        aria-controls={`${item.label}-submenu`}
+                      >
+                        <i
+                          className={`fas ${item.icon} text-lg ${
+                            item.submenu ? 'text-purple-300' : 'text-blue-300'
+                          }`}
+                        ></i>
+                        {!sidebarCollapsed && (
+                          <span className="ml-3 flex-1 text-gray-200 font-medium">{item.label}</span>
+                        )}
+                        <i
+                          className={`fas fa-chevron-down text-xs text-gray-400 transition-transform duration-200 ${
+                            openMenus[item.label] ? 'transform rotate-180' : ''
+                          }`}
+                        ></i>
+                      </button>
+                      {openMenus[item.label] && (
+                        <ul
+                          id={`${item.label}-submenu`}
+                          className={`mt-1 space-y-1 animate-in fade-in-0 slide-in-from-top-2 ${
+                            sidebarCollapsed ? 'hidden' : 'ml-9'
+                          }`}
+                          role="menu"
+                        >
+                          {item.submenu.map((sub, subIdx) => (
+                            <li key={subIdx} role="none" className="flex">
+                              {sub.icon && (
+                                <sub.icon
+                                  className={`fas ${item.icon} text-lg ${
+                                    item.submenu ? 'text-purple-300' : 'text-blue-300'
+                                  }`}
+                                />
+                              )}
+                              <Link
+                                to={sub.href}
+                                className="block px-3 py-2 text-sm hover:text-white text-gray-300 rounded-lg transition-colors duration-150 hover:bg-gray-600"
+                                role="menuitem"
+                              >
+                                {sub.label}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  ) : (
+                    <Link
+                      to={item.href}
+                      className={`flex items-center w-full px-3 py-3 text-left rounded-lg transition-all duration-200 hover:bg-gray-700 ${
+                        sidebarCollapsed ? 'justify-center' : ''
                       }`}
-                    ></i>
-                    {!sidebarCollapsed && (
-                      <span className="ml-3 flex-1 text-gray-200 font-medium">{item.label}</span>
-                    )}
-                    {item.submenu && !sidebarCollapsed && (
-                      <i
-                        className={`fas fa-chevron-down text-xs text-gray-400 transition-transform duration-200 ${
-                          openMenus[item.label] ? 'transform rotate-180' : ''
-                        }`}
-                      ></i>
-                    )}
-                  </button>
-                  {item.submenu && openMenus[item.label] && (
-                    <ul
-                      id={`${item.label}-submenu`}
-                      className={`mt-1 space-y-1 animate-in fade-in-0 slide-in-from-top-2 ${
-                        sidebarCollapsed ? 'hidden' : 'ml-9'
-                      }`}
-                      role="menu"
                     >
-                      {item.submenu.map((sub, subIdx) => (
-                        <li key={subIdx} role="none" className='flex'>
-                        
-                          {sub.icon && <sub.icon  className={`fas ${item.icon} text-lg ${
-                        item.submenu ? 'text-purple-300' : 'text-blue-300'
-                      }`} />}
-                          <button
-                            onClick={() => navigate(sub.href)}
-                            className="block px-3 py-2 text-sm hover:text-white text-gray-300 rounded-lg transition-colors duration-150 hover:bg-gray-600 text-left w-full"
-                            role="menuitem"
-                          >
-                            
-                            {sub.label}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                      <i
+                        className={`fas ${item.icon} text-lg text-blue-300`}
+                      ></i>
+                      {!sidebarCollapsed && (
+                        <span className="ml-3 flex-1 text-gray-200 font-medium">{item.label}</span>
+                      )}
+                    </Link>
                   )}
                 </div>
               ))}
@@ -468,7 +514,24 @@ export default function AdminDashboard() {
                 type="text"
                 placeholder="Rechercher..."
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-full text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 w-64 focus:w-72"
+                value={searchValue}
+                onChange={handleSearchChange}
+                onFocus={() => searchValue && setShowSearchResults(true)}
+                onBlur={() => setTimeout(() => setShowSearchResults(false), 150)}
               />
+              {showSearchResults && searchResults.length > 0 && (
+                <ul className="absolute left-0 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-72 overflow-y-auto animate-in fade-in-0 zoom-in-95">
+                  {searchResults.map((result, idx) => (
+                    <li
+                      key={idx}
+                      className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-gray-700 text-sm"
+                      onMouseDown={() => handleSearchSelect(result.path)}
+                    >
+                      {result.label}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div ref={notificationsRef} className="relative">
@@ -562,24 +625,24 @@ export default function AdminDashboard() {
                   </div>
                   <ul>
                     <li>
-                      <a
-                        href="#"
+                      <Link
+                        to="/admin/profil"
                         className="block px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors duration-150 flex items-center"
                         role="menuitem"
                       >
                         <i className="fas fa-user-circle text-gray-500 mr-3 w-5 text-center"></i>
                         Mon profil
-                      </a>
+                      </Link>
                     </li>
                     <li>
-                      <a
-                        href="#"
+                      <Link
+                        to="/admin/parametres"
                         className="block px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors duration-150 flex items-center"
                         role="menuitem"
                       >
                         <i className="fas fa-cog text-gray-500 mr-3 w-5 text-center"></i>
                         Paramètres
-                      </a>
+                      </Link>
                     </li>
                     <li className="border-t border-gray-200">
                       <button
@@ -599,262 +662,7 @@ export default function AdminDashboard() {
         </header>
 
         <section className="p-6 space-y-6">
-          {/* Cartes de statistiques avec animations */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {statCards.map((card, index) => (
-              <div 
-                key={index}
-                className={`bg-white rounded-xl shadow-sm p-5 transition-all duration-300 hover:shadow-md transform hover:-translate-y-1 ${
-                  isHoveringCard === index ? 'ring-2 ring-blue-500' : ''
-                }`}
-                onMouseEnter={() => setIsHoveringCard(index)}
-                onMouseLeave={() => setIsHoveringCard(null)}
-              >
-                <div className="flex justify-between">
-                  <div className={`bg-${card.color}-100 w-12 h-12 rounded-lg flex items-center justify-center`}>
-                    <i className={`fas ${card.icon} text-${card.color}-500 text-xl`}></i>
-                  </div>
-                  <div className={`text-xs font-medium ${
-                    card.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {card.change} {card.trend === 'up' ? '↑' : '↓'}
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <h3 className="text-sm font-medium text-gray-500">{card.title}</h3>
-                  <p className="text-2xl font-semibold text-gray-800 mt-1">{card.value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Graphiques avec animations */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl shadow-sm p-5 transition-all duration-300 hover:shadow-md">
-              <div className="flex justify-between items-center mb-5">
-                <h2 className="text-lg font-semibold text-gray-800">Plaintes reçues vs résolues</h2>
-                <select className="text-sm border border-gray-300 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>Cette semaine</option>
-                  <option>Ce mois</option>
-                  <option>Cette année</option>
-                </select>
-              </div>
-              <div className="h-80">
-                <Line 
-                  data={complaintsChartData} 
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                      duration: 1500,
-                      easing: 'easeInOutQuart'
-                    },
-                    plugins: {
-                      legend: {
-                        position: 'top',
-                        labels: {
-                          font: {
-                            size: 13
-                          },
-                          usePointStyle: true,
-                        }
-                      },
-                      tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                      }
-                    },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        grid: {
-                          drawBorder: false,
-                        }
-                      },
-                      x: {
-                        grid: {
-                          display: false
-                        }
-                      }
-                    }
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm p-5 transition-all duration-300 hover:shadow-md">
-              <h2 className="text-lg font-semibold text-gray-800 mb-5">État des plaintes</h2>
-              <div className="h-80 flex items-center justify-center">
-                <Doughnut 
-                  data={statusChartData} 
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                      duration: 1500,
-                      easing: 'easeInOutQuart'
-                    },
-                    plugins: {
-                      legend: {
-                        position: 'right',
-                        labels: {
-                          font: {
-                            size: 13
-                          },
-                          usePointStyle: true,
-                          padding: 20
-                        }
-                      },
-                      tooltip: {
-                        callbacks: {
-                          label: function(context) {
-                            const label = context.label || '';
-                            const value = context.raw || 0;
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = Math.round((value / total) * 100);
-                            return `${label}: ${value} (${percentage}%)`;
-                          }
-                        }
-                      }
-                    },
-                    cutout: '70%',
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm p-5 transition-all duration-300 hover:shadow-md lg:col-span-2">
-              <div className="flex justify-between items-center mb-5">
-                <h2 className="text-lg font-semibold text-gray-800">Plaintes par secteur</h2>
-                <div className="flex space-x-2">
-                  <button className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded-lg hover:bg-blue-100 transition-colors duration-200">
-                    Export
-                  </button>
-                  <button className="text-sm bg-gray-50 text-gray-600 px-3 py-1 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                    Voir tout
-                  </button>
-                </div>
-              </div>
-              <div className="h-80">
-                <Bar 
-                  data={sectorChartData} 
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                      duration: 1500,
-                      easing: 'easeInOutQuart'
-                    },
-                    plugins: {
-                      legend: {
-                        display: false
-                      },
-                      tooltip: {
-                        callbacks: {
-                          label: function(context) {
-                            return `${context.dataset.label}: ${context.raw}`;
-                          }
-                        }
-                      }
-                    },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        grid: {
-                          drawBorder: false,
-                        }
-                      },
-                      x: {
-                        grid: {
-                          display: false
-                        }
-                      }
-                    }
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Tableau des dernières plaintes avec animation */}
-          <div className="bg-white rounded-xl shadow-sm p-5 transition-all duration-300 hover:shadow-md">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-lg font-semibold text-gray-800">Dernières plaintes</h2>
-              <button className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center transition-colors duration-200">
-                Voir toutes les plaintes
-                <i className="fas fa-arrow-right ml-2"></i>
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ID
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Secteur
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Statut
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Priorité
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {recentComplaints.map((complaint, index) => (
-                    <tr 
-                      key={index} 
-                      className="hover:bg-gray-50 transition-colors duration-150"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {complaint.id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {complaint.type}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {complaint.sector}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(complaint.status)}`}>
-                          {complaint.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {complaint.date}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <span className={`w-3 h-3 rounded-full ${getPriorityColor(complaint.priority)} mr-2`}></span>
-                          <span className="text-sm text-gray-500 capitalize">{complaint.priority}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button className="text-blue-600 hover:text-blue-900 mr-3 transition-colors duration-200">
-                          <i className="fas fa-eye"></i>
-                        </button>
-                        <button className="text-gray-600 hover:text-gray-900 transition-colors duration-200">
-                          <i className="fas fa-ellipsis-v"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <Outlet />
         </section>
       </main>
     </div>

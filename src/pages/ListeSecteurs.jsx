@@ -1,158 +1,109 @@
-import { Building, Plus, Edit, Trash2 } from 'lucide-react';
-import { AdminPageWrapper } from '../components/layout';
-import { Button } from '../components/ui';
-import { DataTable } from '../components/tables';
 import { useState } from 'react';
+import { Building2 } from 'lucide-react';
 
-// Données d'exemple
-const SECTEURS_DATA = [
-  { id: 1, nom: 'Transport', description: 'Transport public et privé', nbSousSecteurs: 5, dateCreation: '2025-01-15' },
-  { id: 2, nom: 'Santé', description: 'Services de santé publique', nbSousSecteurs: 8, dateCreation: '2025-01-20' },
-  { id: 3, nom: 'Éducation', description: 'Système éducatif national', nbSousSecteurs: 6, dateCreation: '2025-02-01' },
-  { id: 4, nom: 'Environnement', description: 'Protection de l\'environnement', nbSousSecteurs: 4, dateCreation: '2025-02-10' },
-  { id: 5, nom: 'Sécurité', description: 'Sécurité publique et ordre', nbSousSecteurs: 3, dateCreation: '2025-02-15' }
+const SECTEURS_INIT = [
+  { id: 1, nom: 'Transport', description: 'Transports urbains et interurbains' },
+  { id: 2, nom: 'Eau', description: 'Distribution et gestion de l’eau potable' },
+  { id: 3, nom: 'Énergie', description: 'Production et distribution d’énergie' },
+  { id: 4, nom: 'Santé', description: 'Services de santé publique' },
+  { id: 5, nom: 'Éducation', description: 'Établissements scolaires et universitaires' },
 ];
 
 export default function ListeSecteurs() {
-  const [secteurs] = useState(SECTEURS_DATA);
+  const [secteurs, setSecteurs] = useState(SECTEURS_INIT);
+  const [search, setSearch] = useState('');
+  const [filterNom, setFilterNom] = useState('');
+  const [filterDescription, setFilterDescription] = useState('');
 
-  const handleEdit = (secteur) => {
-    console.log('Modifier secteur:', secteur);
+  // Pour le menu déroulant, on extrait les noms uniques
+  const uniqueNoms = Array.from(new Set(secteurs.map(s => s.nom)));
+
+  // Filtrage combiné
+  const filtres = secteurs.filter(s => {
+    const matchSearch =
+      search.trim() === '' ||
+      s.nom.toLowerCase().includes(search.toLowerCase()) ||
+      s.description.toLowerCase().includes(search.toLowerCase());
+    const matchNom = filterNom === '' || s.nom === filterNom;
+    const matchDescription =
+      filterDescription === '' || s.description.toLowerCase().includes(filterDescription.toLowerCase());
+    return matchSearch && matchNom && matchDescription;
+  });
+
+  const handleDelete = (id) => {
+    setSecteurs(secteurs.filter(s => s.id !== id));
   };
-
-  const handleDelete = (secteur) => {
-    console.log('Supprimer secteur:', secteur);
-  };
-
-  const columns = [
-    {
-      key: 'nom',
-      label: 'Nom du secteur',
-      render: (value, row) => (
-        <div>
-          <p className="font-medium text-gray-900">{value}</p>
-          <p className="text-sm text-gray-500">{row.description}</p>
-        </div>
-      )
-    },
-    {
-      key: 'nbSousSecteurs',
-      label: 'Sous-secteurs',
-      render: (value) => (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-          {value} sous-secteurs
-        </span>
-      )
-    },
-    {
-      key: 'dateCreation',
-      label: 'Date de création',
-      render: (value) => (
-        <span className="text-sm text-gray-500">
-          {new Date(value).toLocaleDateString('fr-FR')}
-        </span>
-      )
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (_, row) => (
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            icon={Edit}
-            onClick={() => handleEdit(row)}
-          >
-            Modifier
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            icon={Trash2}
-            onClick={() => handleDelete(row)}
-          >
-            Supprimer
-          </Button>
-        </div>
-      )
-    }
-  ];
 
   return (
-    <AdminPageWrapper title="Gestion des secteurs">
-      <div className="space-y-6">
-        {/* En-tête avec actions */}
-        <div className="flex justify-between items-center">
-          <div>
-            <p className="text-gray-600">
-              Gérez les secteurs d'activité et leurs sous-secteurs
-            </p>
-          </div>
-          <Button variant="primary" icon={Plus}>
-            Nouveau secteur
-          </Button>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-3xl p-8 rounded-2xl shadow-xl bg-white border border-gray-100 animate-fade-in">
+        <div className="flex items-center mb-6">
+          <span className="bg-blue-100 p-3 rounded-xl shadow text-blue-500">
+            <Building2 className="w-7 h-7" />
+          </span>
+          <h2 className="ml-4 text-3xl font-extrabold text-gray-800 tracking-tight">Liste des secteurs</h2>
         </div>
-
-        {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Building className="h-8 w-8 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total secteurs</p>
-                <p className="text-2xl font-bold text-gray-900">{secteurs.length}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Building className="h-8 w-8 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Sous-secteurs</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {secteurs.reduce((total, secteur) => total + secteur.nbSousSecteurs, 0)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Building className="h-8 w-8 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Moyenne</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {Math.round(secteurs.reduce((total, secteur) => total + secteur.nbSousSecteurs, 0) / secteurs.length)}
-                </p>
-                <p className="text-xs text-gray-500">sous-secteurs/secteur</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tableau des secteurs */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">
-              Liste des secteurs ({secteurs.length})
-            </h3>
-          </div>
-          
-          <DataTable
-            data={secteurs}
-            columns={columns}
-            emptyMessage="Aucun secteur trouvé"
+        <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-3 md:space-y-0 mb-6">
+          <input
+            type="text"
+            placeholder="Recherche globale (nom ou description)"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+          />
+          <select
+            value={filterNom}
+            onChange={e => setFilterNom(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+          >
+            <option value="">Tous les secteurs</option>
+            {uniqueNoms.map(nom => (
+              <option key={nom} value={nom}>{nom}</option>
+            ))}
+          </select>
+          <input
+            type="text"
+            placeholder="Filtrer par description"
+            value={filterDescription}
+            onChange={e => setFilterDescription(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
           />
         </div>
+        <div className="mb-2 text-sm text-gray-500">{filtres.length} secteur(s) trouvé(s)</div>
+        <div className="overflow-x-auto rounded-xl">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nom</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
+                <th className="px-6 py-3"></th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {filtres.length === 0 && (
+                <tr><td colSpan={3} className="text-center py-4 text-gray-400">Aucun secteur trouvé.</td></tr>
+              )}
+              {filtres.map(s => (
+                <tr key={s.id} className="hover:bg-blue-50 transition">
+                  <td className="px-6 py-4 whitespace-nowrap text-base font-medium text-gray-900">{s.nom}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500">{s.description}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                    <button onClick={() => alert('Modifier secteur ' + s.nom)} className="text-blue-500 hover:text-blue-700 font-semibold transition">Modifier</button>
+                    <button onClick={() => handleDelete(s.id)} className="text-red-500 hover:text-red-700 font-semibold transition">Supprimer</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <style>{`
+          @keyframes fade-in {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-fade-in { animation: fade-in 0.7s cubic-bezier(.4,2,.6,1) both; }
+        `}</style>
       </div>
-    </AdminPageWrapper>
+    </div>
   );
 } 

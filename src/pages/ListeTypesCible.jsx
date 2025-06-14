@@ -10,12 +10,25 @@ const TYPES_INIT = [
 export default function ListeTypesCible() {
   const [types, setTypes] = useState(TYPES_INIT);
   const [search, setSearch] = useState('');
+  const [filterNom, setFilterNom] = useState('');
+  const [filterDescription, setFilterDescription] = useState('');
+
+  const uniqueNoms = Array.from(new Set(types.map(t => t.nom)));
+
+  const filtres = types.filter(t => {
+    const matchSearch =
+      search.trim() === '' ||
+      t.nom.toLowerCase().includes(search.toLowerCase()) ||
+      t.description.toLowerCase().includes(search.toLowerCase());
+    const matchNom = filterNom === '' || t.nom === filterNom;
+    const matchDescription =
+      filterDescription === '' || t.description.toLowerCase().includes(filterDescription.toLowerCase());
+    return matchSearch && matchNom && matchDescription;
+  });
 
   const handleDelete = (id) => {
     setTypes(types.filter(t => t.id !== id));
   };
-
-  const filtres = types.filter(t => t.nom.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -26,13 +39,33 @@ export default function ListeTypesCible() {
           </span>
           <h2 className="ml-4 text-3xl font-extrabold text-gray-800 tracking-tight">Liste des types de cible</h2>
         </div>
-        <input
-          type="text"
-          placeholder="Rechercher un type..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="mb-6 w-full border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-300 transition"
-        />
+        <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-3 md:space-y-0 mb-6">
+          <input
+            type="text"
+            placeholder="Recherche globale (nom ou description)"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-300 transition"
+          />
+          <select
+            value={filterNom}
+            onChange={e => setFilterNom(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-300 transition"
+          >
+            <option value="">Tous les types</option>
+            {uniqueNoms.map(nom => (
+              <option key={nom} value={nom}>{nom}</option>
+            ))}
+          </select>
+          <input
+            type="text"
+            placeholder="Filtrer par description"
+            value={filterDescription}
+            onChange={e => setFilterDescription(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-300 transition"
+          />
+        </div>
+        <div className="mb-2 text-sm text-gray-500">{filtres.length} type(s) trouvé(s)</div>
         <div className="overflow-x-auto rounded-xl">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -50,7 +83,8 @@ export default function ListeTypesCible() {
                 <tr key={t.id} className="hover:bg-green-50 transition">
                   <td className="px-6 py-4 whitespace-nowrap text-base font-medium text-gray-900">{t.nom}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500">{t.description}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                    <button onClick={() => alert('Modifier type ' + t.nom)} className="text-blue-500 hover:text-blue-700 font-semibold transition">Modifier</button>
                     <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700 font-semibold transition">Supprimer</button>
                   </td>
                 </tr>

@@ -10,12 +10,26 @@ const STRUCTURES_INIT = [
 export default function ListeStructures() {
   const [structures, setStructures] = useState(STRUCTURES_INIT);
   const [search, setSearch] = useState('');
+  const [filterSecteur, setFilterSecteur] = useState('');
+  const [filterDescription, setFilterDescription] = useState('');
+
+  const uniqueSecteurs = Array.from(new Set(structures.map(s => s.secteur)));
+
+  const filtres = structures.filter(s => {
+    const matchSearch =
+      search.trim() === '' ||
+      s.nom.toLowerCase().includes(search.toLowerCase()) ||
+      s.secteur.toLowerCase().includes(search.toLowerCase()) ||
+      s.description.toLowerCase().includes(search.toLowerCase());
+    const matchSecteur = filterSecteur === '' || s.secteur === filterSecteur;
+    const matchDescription =
+      filterDescription === '' || s.description.toLowerCase().includes(filterDescription.toLowerCase());
+    return matchSearch && matchSecteur && matchDescription;
+  });
 
   const handleDelete = (id) => {
     setStructures(structures.filter(s => s.id !== id));
   };
-
-  const filtres = structures.filter(s => s.nom.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -26,13 +40,33 @@ export default function ListeStructures() {
           </span>
           <h2 className="ml-4 text-3xl font-extrabold text-gray-800 tracking-tight">Liste des structures</h2>
         </div>
-        <input
-          type="text"
-          placeholder="Rechercher une structure..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="mb-6 w-full border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-300 transition"
-        />
+        <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-3 md:space-y-0 mb-6">
+          <input
+            type="text"
+            placeholder="Recherche globale (nom, secteur ou description)"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-300 transition"
+          />
+          <select
+            value={filterSecteur}
+            onChange={e => setFilterSecteur(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-300 transition"
+          >
+            <option value="">Tous les secteurs</option>
+            {uniqueSecteurs.map(secteur => (
+              <option key={secteur} value={secteur}>{secteur}</option>
+            ))}
+          </select>
+          <input
+            type="text"
+            placeholder="Filtrer par description"
+            value={filterDescription}
+            onChange={e => setFilterDescription(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-300 transition"
+          />
+        </div>
+        <div className="mb-2 text-sm text-gray-500">{filtres.length} structure(s) trouvée(s)</div>
         <div className="overflow-x-auto rounded-xl">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -52,7 +86,8 @@ export default function ListeStructures() {
                   <td className="px-6 py-4 whitespace-nowrap text-base font-medium text-gray-900">{s.nom}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500">{s.secteur}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-base text-gray-500">{s.description}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                    <button onClick={() => alert('Modifier structure ' + s.nom)} className="text-blue-500 hover:text-blue-700 font-semibold transition">Modifier</button>
                     <button onClick={() => handleDelete(s.id)} className="text-red-500 hover:text-red-700 font-semibold transition">Supprimer</button>
                   </td>
                 </tr>
