@@ -3,7 +3,7 @@
 // Remplacez toutes les valeurs par vos vraies informations Firebase via les variables d'environnement
 
 import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import dotenv from 'dotenv';
 
@@ -89,4 +89,4 @@ try {
   throw error;
 }
 
-export { db, auth, firebaseConfig }; 
+export { db, auth, firebaseConfig, FieldValue }; 

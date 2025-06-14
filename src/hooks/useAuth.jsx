@@ -1,262 +1,158 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { authService } from '../services/authService.js';
+import { apiService } from '../services/apiService.js';
 
-const AuthContext = createContext();
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth doit être utilisé dans un AuthProvider');
-  }
-  return context;
-};
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(authService.getUser());
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // URL de base de l'API
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
-  // Fonction pour faire des requêtes API
-  const apiRequest = async (endpoint, options = {}) => {
-    const token = localStorage.getItem('authToken');
-    
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers,
-      },
-      ...options,
-    };
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Erreur de requête');
-    }
-
-    return data;
-  };
-
-  // Connexion avec email et mot de passe
-  const login = async (email, password) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await apiRequest('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (response.success) {
-        // Stocker le token JWT
-        localStorage.setItem('authToken', response.token);
-        
-        // Stocker les données utilisateur
-        setUser(response.user);
-        
-        return response.user;
-      } else {
-        throw new Error(response.message || 'Erreur de connexion');
-      }
-    } catch (error) {
-      console.error('Erreur de connexion:', error);
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Connexion avec Google (Firebase) - pour compatibilité
-  const loginWithGoogle = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Importer Firebase Auth dynamiquement
-      const { auth, googleProvider } = await import('../firebase/config');
-      const { signInWithPopup } = await import('firebase/auth');
-      
-      const result = await signInWithPopup(auth, googleProvider);
-      const idToken = await result.user.getIdToken();
-      
-      // Envoyer le token Firebase au backend pour vérification
-      const response = await apiRequest('/auth/firebase-login', {
-        method: 'POST',
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (response.success) {
-        localStorage.setItem('authToken', response.token || idToken);
-        setUser(response.user);
-        return response.user;
-      } else {
-        throw new Error(response.message || 'Erreur de connexion Google');
-      }
-    } catch (error) {
-      console.error('Erreur de connexion Google:', error);
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Déconnexion
-  const logout = async () => {
-    try {
-      setLoading(true);
-      
-      // Appeler l'API de déconnexion si un token existe
-      const token = localStorage.getItem('authToken');
-      if (token) {
+  // Vérifier le token au chargement
+  useEffect(() => {
+    const verifyToken = async () => {
+      if (authService.isAuthenticated()) {
+        setLoading(true);
         try {
-          await apiRequest('/auth/logout', {
-            method: 'POST',
-          });
+          const isValid = await authService.verifyToken();
+          if (isValid) {
+            setUser(authService.getUser());
+          } else {
+            setUser(null);
+          }
         } catch (error) {
-          console.warn('Erreur lors de la déconnexion côté serveur:', error);
+          console.error('Erreur vérification token:', error);
+          setUser(null);
+        } finally {
+          setLoading(false);
         }
       }
-      
-      // Nettoyer le stockage local
-      localStorage.removeItem('authToken');
-      setUser(null);
-      setError(null);
-      
+    };
+
+    verifyToken();
+  }, []);
+
+  const login = async (email, password) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await authService.login(email, password);
+      setUser(result.user);
+      return result;
     } catch (error) {
-      console.error('Erreur de déconnexion:', error);
+      setError(error.message);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  // Vérifier le token au chargement
-  const verifyToken = async () => {
+  const logout = async () => {
+    setLoading(true);
     try {
-      const token = localStorage.getItem('authToken');
-      
-      if (!token) {
-        setLoading(false);
-        return;
+      await authService.logout();
+    } finally {
+      setUser(null);
+      setLoading(false);
+    }
+  };
+
+  // Inscription (réservée aux super admins)
+  const register = async (userData) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (!user || user.role !== 'super_admin') {
+        throw new Error('Seuls les super administrateurs peuvent créer de nouveaux comptes');
       }
 
-      const response = await apiRequest('/auth/verify-token');
-      
+      const response = await apiService.post('/auth/register', userData);
+
       if (response.success) {
-        setUser(response.user);
+        return response.user;
       } else {
-        // Token invalide, nettoyer
-        localStorage.removeItem('authToken');
-        setUser(null);
+        throw new Error(response.message || 'Erreur lors de la création du compte');
       }
     } catch (error) {
-      console.error('Erreur de vérification du token:', error);
-      localStorage.removeItem('authToken');
-      setUser(null);
+      setError(error.message);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
   // Récupérer le profil utilisateur
-  const getProfile = async () => {
+  const getUserProfile = async () => {
     try {
-      const response = await apiRequest('/auth/profile');
-      
+      const response = await apiService.get('/users/profile');
       if (response.success) {
         setUser(response.user);
+        authService.updateUser(response.user);
         return response.user;
       }
     } catch (error) {
-      console.error('Erreur de récupération du profil:', error);
+      console.error('Erreur profil:', error);
       throw error;
     }
   };
 
-  // Changer le mot de passe
-  const changePassword = async (currentPassword, newPassword) => {
-    try {
-      const response = await apiRequest('/auth/change-password', {
-        method: 'PUT',
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-
-      if (response.success) {
-        return true;
-      } else {
-        throw new Error(response.message || 'Erreur lors du changement de mot de passe');
-      }
-    } catch (error) {
-      console.error('Erreur de changement de mot de passe:', error);
-      throw error;
+  // Mettre à jour le profil
+  const updateProfile = async (updates) => {
+    const response = await apiService.put('/users/profile', updates);
+    
+    if (response.success) {
+      const updatedUser = { ...user, ...response.user };
+      setUser(updatedUser);
+      authService.updateUser(updatedUser);
+      return response.user;
     }
   };
 
-  // Créer un administrateur (pour les super admins)
-  const createAdmin = async (adminData) => {
-    try {
-      const response = await apiRequest('/auth/create-admin', {
-        method: 'POST',
-        body: JSON.stringify(adminData),
-      });
-
-      if (response.success) {
-        return response.user;
-      } else {
-        throw new Error(response.message || 'Erreur lors de la création de l\'administrateur');
-      }
-    } catch (error) {
-      console.error('Erreur de création d\'administrateur:', error);
-      throw error;
-    }
-  };
-
-  // Vérifier les permissions
   const hasPermission = (permission) => {
-    if (!user || !user.permissions) return false;
-    return user.permissions.includes(permission);
+    return authService.hasPermission(permission);
   };
 
-  // Vérifier le rôle
   const hasRole = (role) => {
-    if (!user) return false;
-    return user.role === role;
+    if (Array.isArray(role)) {
+      return role.includes(user?.role);
+    }
+    return authService.hasRole(role);
   };
 
-  // Vérifier si l'utilisateur est admin
-  const isAdmin = () => {
-    if (!user) return false;
-    const adminRoles = ['super_admin', 'admin', 'sector_manager', 'structure_manager', 'moderator', 'analyst'];
-    return adminRoles.includes(user.role);
+  const isSuperAdmin = () => {
+    return authService.isSuperAdmin();
   };
 
-  // Effet pour vérifier le token au chargement
-  useEffect(() => {
-    verifyToken();
-  }, []);
+  // Fonction pour rafraîchir les données utilisateur
+  const refreshUser = async () => {
+    try {
+      await getUserProfile();
+    } catch (error) {
+      console.error('Erreur rafraîchissement utilisateur:', error);
+    }
+  };
 
   const value = {
     user,
     loading,
     error,
-    setError,
     login,
-    loginWithGoogle,
     logout,
-    verifyToken,
-    getProfile,
-    changePassword,
-    createAdmin,
+    register,
+    getUserProfile,
+    updateProfile,
     hasPermission,
     hasRole,
-    isAdmin,
-    apiRequest, // Exposer pour d'autres composants
+    isSuperAdmin,
+    refreshUser,
+    setError,
+    isAuthenticated: authService.isAuthenticated(),
+    // Exposer les services pour usage avancé
+    authService,
+    apiService
   };
 
   return (
@@ -264,4 +160,12 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }; 

@@ -1170,7 +1170,7 @@ export const getAllMinisteres = async (req, res) => {
 
     const { actif, withStats } = req.query;
     
-          let query = db.collection('ministeres');
+          let query = db.collection('ministères');
     
     if (actif !== undefined) {
       query = query.where('actif', '==', actif === 'true');
@@ -1252,7 +1252,7 @@ export const createMinistere = async (req, res) => {
     }
     
     // Vérifier l'unicité du nom
-          const existingSnapshot = await db.collection('ministeres')
+          const existingSnapshot = await db.collection('ministères')
       .where('nom', '==', nom.trim())
       .limit(1)
       .get();
@@ -1303,6 +1303,96 @@ export const createMinistere = async (req, res) => {
 };
 
 // ===================== DIRECTIONS =====================
+
+/**
+ * @swagger
+ * /api/structures/directions:
+ *   get:
+ *     summary: Récupérer toutes les directions
+ *     tags: [Structures]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: actif
+ *         schema:
+ *           type: boolean
+ *         description: Filtrer par statut actif
+ *       - in: query
+ *         name: ministereId
+ *         schema:
+ *           type: string
+ *         description: Filtrer par ministère
+ *       - in: query
+ *         name: withStats
+ *         schema:
+ *           type: boolean
+ *         description: Inclure les statistiques
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Numéro de page
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Nombre d'éléments par page
+ *     responses:
+ *       200:
+ *         description: Liste de toutes les directions
+ */
+export const getAllDirections = async (req, res) => {
+  try {
+    if (!hasPermission(req.user, UserPermissions.VIEW_STRUCTURES)) {
+      return res.status(403).json({ error: 'Permission insuffisante' });
+    }
+
+    const { actif, ministereId, withStats } = req.query;
+    
+    let query = db.collection('directions');
+    
+    // Filtres
+    if (actif !== undefined) {
+      query = query.where('actif', '==', actif === 'true');
+    }
+    
+    if (ministereId) {
+      query = query.where('ministereId', '==', ministereId);
+    }
+    
+    const snapshot = await query.orderBy('nom', 'asc').get();
+    const directions = [];
+    
+    for (const doc of snapshot.docs) {
+      const directionData = { id: doc.id, ...doc.data() };
+      
+      // Ajouter les statistiques si demandées
+      if (withStats === 'true') {
+        const servicesSnapshot = await db.collection('services')
+          .where('directionId', '==', doc.id)
+          .where('actif', '==', true)
+          .get();
+        
+        directionData.statistiques = {
+          ...directionData.statistiques,
+          nombreServices: servicesSnapshot.size
+        };
+      }
+      
+      directions.push(directionData);
+    }
+    
+    res.json({
+      success: true,
+      data: directions,
+      count: directions.length
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des directions:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
 
 /**
  * @swagger
@@ -1583,6 +1673,104 @@ export const getServicesByMinistereAndDirection = async (req, res) => {
     snapshot.forEach(doc => {
       services.push({ id: doc.id, ...doc.data() });
     });
+    
+    res.json({
+      success: true,
+      data: services,
+      count: services.length
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des services:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
+
+/**
+ * @swagger
+ * /api/structures/services:
+ *   get:
+ *     summary: Récupérer tous les services
+ *     tags: [Structures]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: actif
+ *         schema:
+ *           type: boolean
+ *         description: Filtrer par statut actif
+ *       - in: query
+ *         name: ministereId
+ *         schema:
+ *           type: string
+ *         description: Filtrer par ministère
+ *       - in: query
+ *         name: directionId
+ *         schema:
+ *           type: string
+ *         description: Filtrer par direction
+ *       - in: query
+ *         name: withStats
+ *         schema:
+ *           type: boolean
+ *         description: Inclure les statistiques
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Numéro de page
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Nombre d'éléments par page
+ *     responses:
+ *       200:
+ *         description: Liste de tous les services
+ */
+export const getAllServices = async (req, res) => {
+  try {
+    if (!hasPermission(req.user, UserPermissions.VIEW_STRUCTURES)) {
+      return res.status(403).json({ error: 'Permission insuffisante' });
+    }
+
+    const { actif, ministereId, directionId, withStats } = req.query;
+    
+    let query = db.collection('services');
+    
+    // Filtres
+    if (actif !== undefined) {
+      query = query.where('actif', '==', actif === 'true');
+    }
+    
+    if (ministereId) {
+      query = query.where('ministereId', '==', ministereId);
+    }
+    
+    if (directionId) {
+      query = query.where('directionId', '==', directionId);
+    }
+    
+    const snapshot = await query.orderBy('nom', 'asc').get();
+    const services = [];
+    
+    for (const doc of snapshot.docs) {
+      const serviceData = { id: doc.id, ...doc.data() };
+      
+      // Ajouter les statistiques si demandées
+      if (withStats === 'true') {
+        const complaintsSnapshot = await db.collection('complaints')
+          .where('publicStructure.serviceId', '==', doc.id)
+          .get();
+        
+        serviceData.statistiques = {
+          ...serviceData.statistiques,
+          nombrePlaintes: complaintsSnapshot.size
+        };
+      }
+      
+      services.push(serviceData);
+    }
     
     res.json({
       success: true,

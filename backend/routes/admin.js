@@ -1,5 +1,5 @@
 import express from 'express';
-import { authMiddleware } from '../middleware/auth.js';
+import { authenticateToken } from '../middleware/auth.js';
 import {
   getAllUsers,
   getUserById,
@@ -7,7 +7,9 @@ import {
   updateUser,
   deleteUser,
   getUsersStats,
-  updateUserRole
+  updateUserRole,
+  getUserProfile,
+  updateUserProfile
 } from '../controllers/userController.js';
 import {
   updateUserRole as adminUpdateRole,
@@ -28,7 +30,17 @@ const router = express.Router();
  */
 
 // Toutes les routes nécessitent une authentification
-router.use(authMiddleware);
+router.use(authenticateToken);
+
+/**
+ * Routes pour le profil utilisateur
+ */
+
+// Récupérer le profil de l'utilisateur connecté
+router.get('/profile', getUserProfile);
+
+// Mettre à jour le profil de l'utilisateur connecté
+router.put('/profile', updateUserProfile);
 
 /**
  * Routes pour la gestion des administrateurs

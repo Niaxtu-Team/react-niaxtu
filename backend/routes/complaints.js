@@ -7,7 +7,7 @@ import {
   finalizeDraft,
   getComplaintTypes
 } from '../controllers/complaintController.js';
-import { verifyFirebaseToken } from '../middleware/auth.js';
+import { authenticateToken } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/permissions.js';
 import { UserPermissions } from '../models/User.js';
 
@@ -24,14 +24,14 @@ const router = express.Router();
 router.get('/types', getComplaintTypes);
 
 // Routes avec authentification
-router.get('/', verifyFirebaseToken, getComplaints);
-router.post('/', verifyFirebaseToken, createComplaint);
+router.get('/', authenticateToken, getComplaints);
+router.post('/', authenticateToken, createComplaint);
 
 // Routes pour les brouillons
-router.put('/:id/finalize', verifyFirebaseToken, finalizeDraft);
+router.put('/:id/finalize', authenticateToken, finalizeDraft);
 
 // Routes administratives
-router.put('/:id/status', verifyFirebaseToken, requirePermission(UserPermissions.MANAGE_COMPLAINTS), updateComplaintStatus);
-router.post('/:id/comments', verifyFirebaseToken, addComplaintComment);
+router.put('/:id/status', authenticateToken, requirePermission(UserPermissions.MANAGE_COMPLAINTS), updateComplaintStatus);
+router.post('/:id/comments', authenticateToken, addComplaintComment);
 
 export default router; 

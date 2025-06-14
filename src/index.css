@@ -1,1 +1,268 @@
 @import "tailwindcss";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Animations personnalisées */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  40%, 43% {
+    transform: translate3d(0, -30px, 0);
+  }
+  70% {
+    transform: translate3d(0, -15px, 0);
+  }
+  90% {
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
+/* Classes utilitaires */
+.animate-fadeInUp {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-slideInFromTop {
+  animation: slideInFromTop 0.4s ease-out forwards;
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+
+.slide-in-from-top-4 {
+  animation: slideInFromTop 0.5s ease-out;
+}
+
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+/* Effets de glassmorphism */
+.backdrop-blur-sm {
+  backdrop-filter: blur(4px);
+}
+
+.backdrop-blur-md {
+  backdrop-filter: blur(8px);
+}
+
+.backdrop-blur-lg {
+  backdrop-filter: blur(16px);
+}
+
+/* Scrollbar personnalisée */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Transitions fluides */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Focus states améliorés */
+.focus-ring {
+  @apply focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500;
+}
+
+/* Boutons avec effets */
+.btn-primary {
+  @apply bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3 rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 font-semibold;
+}
+
+.btn-secondary {
+  @apply bg-gray-100 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-200 transition-all duration-200 font-semibold;
+}
+
+.btn-success {
+  @apply bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 font-semibold;
+}
+
+.btn-danger {
+  @apply bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-3 rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 font-semibold;
+}
+
+/* Cards avec effets */
+.card {
+  @apply bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1;
+}
+
+.card-modern {
+  @apply bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1;
+}
+
+/* Inputs avec style moderne */
+.input-modern {
+  @apply w-full px-4 py-3 border-2 border-gray-200/50 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white/50 backdrop-blur-sm;
+}
+
+/* Badges et statuts */
+.badge-success {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300;
+}
+
+.badge-danger {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300;
+}
+
+.badge-warning {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-300;
+}
+
+.badge-info {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300;
+}
+
+/* Responsive design amélioré */
+@media (max-width: 640px) {
+  .card {
+    @apply p-4;
+  }
+  
+  .btn-primary, .btn-secondary, .btn-success, .btn-danger {
+    @apply px-4 py-2 text-sm;
+  }
+}
+
+/* Dark mode support (optionnel) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1f2937;
+    --bg-secondary: #374151;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+  }
+}
+
+/* Animations pour les modals */
+.modal-enter {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.modal-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.modal-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.modal-exit-active {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Effets de hover pour les tableaux */
+.table-row-hover {
+  @apply hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 transition-all duration-300;
+}
+
+/* Loading states */
+.loading-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Styles pour les notifications toast */
+.toast {
+  @apply fixed top-4 right-4 bg-white shadow-lg rounded-xl p-4 border-l-4 z-50 max-w-sm;
+}
+
+.toast-success {
+  @apply border-green-500;
+}
+
+.toast-error {
+  @apply border-red-500;
+}
+
+.toast-warning {
+  @apply border-yellow-500;
+}
+
+.toast-info {
+  @apply border-blue-500;
+}

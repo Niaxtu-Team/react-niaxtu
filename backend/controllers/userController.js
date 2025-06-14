@@ -9,6 +9,7 @@ import {
   hashPassword,
   validatePassword
 } from '../models/User.js';
+import { checkPermission } from '../middleware/permissions.js';
 
 // Obtenir le profil utilisateur
 export const getUserProfile = async (req, res) => {
@@ -106,71 +107,184 @@ export const updateUserProfile = async (req, res) => {
  */
 export const getAllUsers = async (req, res) => {
   try {
-    if (!hasPermission(req.user, UserPermissions.VIEW_USERS)) {
-      return res.status(403).json({ error: 'Permission insuffisante' });
+    console.log('[DEBUG] getAllUsers - Utilisateur connecté:', {
+      uid: req.user?.uid,
+      email: req.user?.email,
+      role: req.user?.role,
+      isSuperAdmin: req.user?.role === UserRoles.SUPER_ADMIN || req.user?.isSuperAdmin,
+      permissions: req.user?.permissions?.length || 0
+    });
+
+    // Vérification des permissions de base avec le nouveau système
+    const permissionCheck = checkPermission(req.user, UserPermissions.VIEW_USERS);
+    if (!permissionCheck.allowed) {
+      console.log('[DEBUG] Permission VIEW_USERS refusée');
+      return res.status(403).json(permissionCheck);
     }
+
+    console.log('[DEBUG] Permission VIEW_USERS accordée');
 
     const { 
       role, 
-      active, 
+      isActive,
       search, 
       page = 1, 
-      limit = 20,
+      limit = 10,
+      dateRange,
       sortBy = 'createdAt',
       sortOrder = 'desc'
     } = req.query;
     
+    console.log('[DEBUG] Paramètres de requête:', {
+      role, isActive, search, page, limit, dateRange, sortBy, sortOrder
+    });
+    
     let query = db.collection('admin');
     
-    // Filtres
-    if (role) {
+    // Filtres de base
+    if (role && role !== 'all') {
+      console.log('[DEBUG] Filtrage par rôle:', role);
       query = query.where('role', '==', role);
     }
     
-    if (active !== undefined) {
-      query = query.where('isActive', '==', active === 'true');
+    if (isActive && isActive !== 'all') {
+      const isActiveBoolean = isActive === 'true';
+      console.log('[DEBUG] Filtrage par statut actif:', isActiveBoolean);
+      query = query.where('isActive', '==', isActiveBoolean);
     }
     
-    // Pour la recherche, on récupère tout et on filtre côté serveur
-    // (Firestore ne supporte pas la recherche textuelle native)
-    let users = [];
+    // Récupération de tous les utilisateurs
+    console.log('[DEBUG] Exécution de la requête Firestore...');
     const snapshot = await query.get();
+    console.log('[DEBUG] Nombre de documents récupérés de Firestore:', snapshot.size);
+    
+    if (snapshot.empty) {
+      console.log('[DEBUG] Aucun document trouvé dans Firestore');
+      return res.json({
+        success: true,
+        data: [],
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: 0,
+          pages: 0
+        }
+      });
+    }
+    
+    // Calcul des dates pour le filtre dateRange
+    let dateFilter = null;
+    if (dateRange && dateRange !== 'all') {
+      const now = new Date();
+      switch (dateRange) {
+        case '7d':
+          dateFilter = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          dateFilter = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case '90d':
+          dateFilter = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        case '1y':
+          dateFilter = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          break;
+      }
+      console.log('[DEBUG] Filtre de date calculé:', dateFilter);
+    }
+    
+    let users = [];
+    let skippedUsers = 0;
+    
+    // Déterminer si l'utilisateur est super admin
+    const isSuperAdmin = req.user?.role === UserRoles.SUPER_ADMIN || req.user?.isSuperAdmin;
+    console.log('[DEBUG] Utilisateur est super admin:', isSuperAdmin);
     
     snapshot.forEach(doc => {
       const userData = { id: doc.id, ...doc.data() };
+      console.log('[DEBUG] Traitement utilisateur:', userData.id, 'rôle:', userData.role);
       
-      // Vérifier si l'utilisateur actuel peut voir cet utilisateur
-      if (hasPermission(req.user, UserPermissions.LIMITED_USER_VIEW)) {
-        // Utilisateur avec vue limitée - ne peut voir que les utilisateurs de niveau inférieur
-        if (!canManageUser(req.user, userData)) {
-          return; // Skip cet utilisateur
+      // SUPER ADMIN voit TOUS les utilisateurs sans exception
+      if (!isSuperAdmin) {
+        // Vérifier les permissions avancées seulement pour les non-super-admins
+        const hasLimitedView = hasPermission(req.user, UserPermissions.LIMITED_USER_VIEW);
+        console.log('[DEBUG] Utilisateur a vue limitée:', hasLimitedView);
+        
+        if (hasLimitedView) {
+          const canManage = canManageUser(req.user, userData);
+          console.log('[DEBUG] Peut gérer cet utilisateur:', canManage);
+          if (!canManage) {
+            console.log('[DEBUG] Skip utilisateur (permissions limitées):', userData.id);
+            skippedUsers++;
+            return; // Skip cet utilisateur
+          }
+        }
+      } else {
+        console.log('[DEBUG] Super admin - utilisateur inclus automatiquement:', userData.id);
+      }
+      
+      // Filtrer par dateRange si spécifié
+      if (dateFilter && userData.createdAt) {
+        const userCreatedAt = new Date(userData.createdAt);
+        if (userCreatedAt < dateFilter) {
+          console.log('[DEBUG] Skip utilisateur (hors période):', userData.id);
+          skippedUsers++;
+          return; // Skip cet utilisateur (trop ancien)
         }
       }
       
       // Filtrer par recherche si spécifiée
-      if (search) {
+      if (search && search.trim()) {
         const searchTerm = search.toLowerCase();
         const searchableText = [
           userData.email,
           userData.displayName,
           userData.profile?.firstName,
-          userData.profile?.lastName
+          userData.profile?.lastName,
+          userData.nom,
+          userData.prenom
         ].filter(Boolean).join(' ').toLowerCase();
         
         if (!searchableText.includes(searchTerm)) {
+          console.log('[DEBUG] Skip utilisateur (recherche non match):', userData.id);
+          skippedUsers++;
           return; // Skip cet utilisateur
         }
       }
       
       // Masquer les informations sensibles selon les permissions
-      if (!hasPermission(req.user, UserPermissions.VIEW_USER_ACTIVITY)) {
+      // SUPER ADMIN voit tout
+      if (!isSuperAdmin && !hasPermission(req.user, UserPermissions.VIEW_USER_ACTIVITY)) {
         delete userData.lastLogin;
         delete userData.loginCount;
         delete userData.failedLoginAttempts;
+        delete userData.loginHistory;
+        delete userData.password; // Toujours masquer le mot de passe
       }
       
+      // Ajouter des champs manquants pour la compatibilité frontend
+      if (!userData.nom && userData.profile?.lastName) {
+        userData.nom = userData.profile.lastName;
+      }
+      if (!userData.prenom && userData.profile?.firstName) {
+        userData.prenom = userData.profile.firstName;
+      }
+      if (!userData.telephone && userData.profile?.phone) {
+        userData.telephone = userData.profile.phone;
+      }
+      
+      // S'assurer que les champs requis existent
+      userData.isActive = userData.isActive !== undefined ? userData.isActive : true;
+      userData.role = userData.role || 'user';
+      userData.createdAt = userData.createdAt || new Date().toISOString();
+      userData.updatedAt = userData.updatedAt || userData.createdAt;
+      
+      console.log('[DEBUG] Utilisateur ajouté à la liste:', userData.id);
       users.push(userData);
     });
+    
+    console.log('[DEBUG] Utilisateurs filtrés:', users.length);
+    console.log('[DEBUG] Utilisateurs ignorés:', skippedUsers);
     
     // Tri
     users.sort((a, b) => {
@@ -178,8 +292,14 @@ export const getAllUsers = async (req, res) => {
       let bValue = b[sortBy];
       
       if (sortBy === 'name') {
-        aValue = a.displayName || a.profile?.firstName || a.email;
-        bValue = b.displayName || b.profile?.firstName || b.email;
+        aValue = a.displayName || a.profile?.firstName || a.nom || a.email;
+        bValue = b.displayName || b.profile?.firstName || b.nom || b.email;
+      }
+      
+      // Gestion des dates
+      if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
+        aValue = aValue ? new Date(aValue).getTime() : 0;
+        bValue = bValue ? new Date(bValue).getTime() : 0;
       }
       
       if (sortOrder === 'desc') {
@@ -194,6 +314,15 @@ export const getAllUsers = async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const paginatedUsers = users.slice(offset, offset + parseInt(limit));
     
+    console.log('[DEBUG] Pagination:', {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      offset,
+      paginatedUsers: paginatedUsers.length,
+      totalPages: Math.ceil(total / parseInt(limit))
+    });
+
     res.json({
       success: true,
       data: paginatedUsers,
@@ -205,8 +334,14 @@ export const getAllUsers = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Erreur lors de la récupération des utilisateurs:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    console.error('[DEBUG] Erreur dans getAllUsers:', error);
+    console.error('[DEBUG] Stack trace:', error.stack);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur lors de la récupération des utilisateurs',
+      message: 'Une erreur est survenue lors de la récupération des utilisateurs. Veuillez réessayer.',
+      code: 'SERVER_ERROR'
+    });
   }
 };
 

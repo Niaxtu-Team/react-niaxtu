@@ -1,5 +1,6 @@
 import { auth, db } from '../config/firebase.js';
 import jwt from 'jsonwebtoken';
+import { UserRoles } from '../models/User.js';
 
 // Configuration JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'niaxtu-super-secret-key-2024';
@@ -9,18 +10,50 @@ const verifyJWTToken = async (token) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    // Récupérer les données utilisateur depuis Firestore
-    const userDoc = await db.collection('users').doc(decoded.id).get();
+    console.log('[AUTH] Vérification token JWT pour:', decoded.email);
     
-    if (!userDoc.exists) {
-      throw new Error('Utilisateur non trouvé');
+    // Récupérer les données administrateur depuis Firestore
+    const adminDoc = await db.collection('admin').doc(decoded.id).get();
+    
+    if (!adminDoc.exists) {
+      console.log('[AUTH] Admin non trouvé en base, utilisation des données du token');
+      // Si l'admin n'existe plus en base, on utilise les données du token
+      // mais on marque le compte comme potentiellement obsolète
+      return {
+        id: decoded.id,
+        uid: decoded.id,
+        email: decoded.email,
+        role: decoded.role,
+        permissions: decoded.permissions || [],
+        isActive: true, // On assume actif si pas d'info contraire
+        isJWTUser: true,
+        isTokenOnly: true // Flag pour indiquer que les données viennent du token uniquement
+      };
     }
     
-    const userData = userDoc.data();
+    const adminData = adminDoc.data();
+    console.log('[AUTH] Admin trouvé en base:', adminData.email, 'rôle:', adminData.role);
     
-    // Vérifier si le compte est actif
-    if (!userData.isActive || userData.isBlocked) {
-      throw new Error('Compte désactivé');
+    // IMPORTANT : Le super admin ne peut JAMAIS être désactivé
+    if (adminData.role === UserRoles.SUPER_ADMIN) {
+      console.log('[AUTH] Super admin détecté - accès total garanti');
+      return {
+        id: decoded.id,
+        uid: decoded.id, // Compatibilité avec l'ancien système
+        email: decoded.email,
+        role: decoded.role,
+        permissions: decoded.permissions,
+        ...adminData,
+        isActive: true, // FORCE l'activation pour le super admin
+        isBlocked: false, // FORCE le déblocage pour le super admin
+        isJWTUser: true,
+        isSuperAdmin: true
+      };
+    }
+    
+    // Vérifier si le compte est actif (sauf pour super admin)
+    if (adminData.isActive === false || adminData.isBlocked) {
+      throw new Error('Compte désactivé ou bloqué');
     }
     
     return {
@@ -29,10 +62,17 @@ const verifyJWTToken = async (token) => {
       email: decoded.email,
       role: decoded.role,
       permissions: decoded.permissions,
-      ...userData,
+      ...adminData,
       isJWTUser: true
     };
   } catch (error) {
+    console.error('[AUTH] Erreur vérification JWT:', error.message);
+    if (error.name === 'JsonWebTokenError') {
+      throw new Error('Token JWT invalide - format incorrect');
+    }
+    if (error.name === 'TokenExpiredError') {
+      throw new Error('Token JWT expiré - reconnexion requise');
+    }
     throw new Error(`Token JWT invalide: ${error.message}`);
   }
 };
@@ -49,7 +89,7 @@ const verifyTestToken = (token) => {
     
     // Vérifier l'expiration
     if (decoded.exp < Date.now()) {
-      throw new Error('Token expired');
+      throw new Error('Token de test expiré');
     }
     
     return {
@@ -59,10 +99,11 @@ const verifyTestToken = (token) => {
       emailVerified: true,
       name: `Test User (${decoded.role})`,
       picture: null,
-      isTestUser: true
+      isTestUser: true,
+      isActive: true
     };
   } catch (error) {
-    throw new Error('Invalid test token');
+    throw new Error(`Token de test invalide: ${error.message}`);
   }
 };
 
@@ -74,70 +115,130 @@ export const authenticateToken = async (req, res, next) => {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ 
         success: false,
-        message: 'Token d\'authentification manquant ou invalide' 
+        error: 'Token d\'authentification manquant',
+        message: 'Veuillez vous connecter pour accéder à cette ressource',
+        code: 'NO_TOKEN',
+        action: 'LOGIN_REQUIRED'
       });
     }
 
     const token = authHeader.split('Bearer ')[1];
+    console.log('[AUTH] Tentative d\'authentification avec token:', token.substring(0, 20) + '...');
     
     // 1. Essayer d'abord de vérifier comme token JWT local
     try {
       const jwtUser = await verifyJWTToken(token);
+      console.log('[AUTH] Authentification JWT réussie pour:', jwtUser.email);
       req.user = jwtUser;
       return next();
     } catch (jwtError) {
+      console.log('[AUTH] Échec JWT:', jwtError.message);
       // Si ce n'est pas un token JWT valide, continuer avec les autres méthodes
     }
     
     // 2. Essayer ensuite de vérifier comme token de test
     try {
       const testUser = verifyTestToken(token);
+      console.log('[AUTH] Authentification test réussie pour:', testUser.email);
       req.user = testUser;
       return next();
     } catch (testError) {
+      console.log('[AUTH] Échec test token:', testError.message);
       // Si ce n'est pas un token de test, continuer avec Firebase
     }
     
     // 3. Vérifier le token avec Firebase Admin
-    const decodedToken = await auth.verifyIdToken(token);
-    
-    // Récupérer les données administrateur depuis Firestore
-    const adminDoc = await db.collection('admin').doc(decodedToken.uid).get();
-    
-    if (adminDoc.exists) {
-      // Administrateur existant avec profil complet
-      req.user = {
-        uid: decodedToken.uid,
-        id: decodedToken.uid, // Compatibilité avec le nouveau système
-        email: decodedToken.email,
-        emailVerified: decodedToken.email_verified,
-        name: decodedToken.name,
-        picture: decodedToken.picture,
-        ...adminDoc.data(),
-        isFirebaseUser: true
-      };
-    } else {
-      // Nouvel administrateur ou administrateur sans profil
-      req.user = {
-        uid: decodedToken.uid,
-        id: decodedToken.uid, // Compatibilité avec le nouveau système
-        email: decodedToken.email,
-        emailVerified: decodedToken.email_verified,
-        name: decodedToken.name,
-        picture: decodedToken.picture,
-        role: 'admin',
-        permissions: [],
-        isActive: true,
-        isFirebaseUser: true
-      };
+    try {
+      console.log('[AUTH] Tentative d\'authentification Firebase...');
+      const decodedToken = await auth.verifyIdToken(token);
+      
+      // Récupérer les données administrateur depuis Firestore
+      const adminDoc = await db.collection('admin').doc(decodedToken.uid).get();
+      
+      if (adminDoc.exists) {
+        const adminData = adminDoc.data();
+        console.log('[AUTH] Admin Firebase trouvé:', adminData.email, 'rôle:', adminData.role);
+        
+        // IMPORTANT : Le super admin ne peut JAMAIS être désactivé
+        if (adminData.role === UserRoles.SUPER_ADMIN) {
+          console.log('[AUTH] Super admin Firebase détecté - accès total garanti');
+          req.user = {
+            uid: decodedToken.uid,
+            id: decodedToken.uid, // Compatibilité avec le nouveau système
+            email: decodedToken.email,
+            emailVerified: decodedToken.email_verified,
+            name: decodedToken.name,
+            picture: decodedToken.picture,
+            ...adminData,
+            isActive: true, // FORCE l'activation pour le super admin
+            isBlocked: false, // FORCE le déblocage pour le super admin
+            isFirebaseUser: true,
+            isSuperAdmin: true
+          };
+        } else {
+          // Vérifier si le compte est actif (sauf pour super admin)
+          if (adminData.isActive === false || adminData.isBlocked) {
+            return res.status(403).json({ 
+              success: false,
+              error: 'Compte désactivé',
+              message: 'Votre compte a été désactivé. Contactez l\'administrateur.',
+              code: 'ACCOUNT_DISABLED',
+              action: 'CONTACT_ADMIN'
+            });
+          }
+          
+          // Administrateur existant avec profil complet
+          req.user = {
+            uid: decodedToken.uid,
+            id: decodedToken.uid, // Compatibilité avec le nouveau système
+            email: decodedToken.email,
+            emailVerified: decodedToken.email_verified,
+            name: decodedToken.name,
+            picture: decodedToken.picture,
+            ...adminData,
+            isFirebaseUser: true
+          };
+        }
+      } else {
+        console.log('[AUTH] Nouvel admin Firebase, création du profil par défaut');
+        // Nouvel administrateur ou administrateur sans profil
+        req.user = {
+          uid: decodedToken.uid,
+          id: decodedToken.uid, // Compatibilité avec le nouveau système
+          email: decodedToken.email,
+          emailVerified: decodedToken.email_verified,
+          name: decodedToken.name,
+          picture: decodedToken.picture,
+          role: 'admin',
+          permissions: [],
+          isActive: true,
+          isFirebaseUser: true
+        };
+      }
+      
+      console.log('[AUTH] Authentification Firebase réussie pour:', req.user.email);
+      return next();
+    } catch (firebaseError) {
+      console.error('[AUTH] Échec Firebase:', firebaseError.message);
     }
     
-    next();
-  } catch (error) {
-    console.error('Erreur de vérification du token:', error);
+    // Si toutes les méthodes ont échoué
     return res.status(401).json({ 
       success: false,
-      message: 'Token d\'authentification invalide' 
+      error: 'Token d\'authentification invalide',
+      message: 'Votre session a expiré ou le token est invalide. Veuillez vous reconnecter.',
+      code: 'INVALID_TOKEN',
+      action: 'LOGIN_REQUIRED'
+    });
+    
+  } catch (error) {
+    console.error('[AUTH] Erreur générale d\'authentification:', error);
+    return res.status(401).json({ 
+      success: false,
+      error: 'Erreur d\'authentification',
+      message: 'Une erreur est survenue lors de la vérification de votre authentification. Veuillez vous reconnecter.',
+      code: 'AUTH_ERROR',
+      action: 'LOGIN_REQUIRED'
     });
   }
 };
@@ -149,7 +250,10 @@ export const verifyFirebaseToken = async (req, res, next) => {
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ 
-        error: 'Token d\'authentification manquant ou invalide' 
+        success: false,
+        error: 'Token d\'authentification manquant',
+        message: 'Veuillez vous connecter pour accéder à cette ressource',
+        code: 'NO_TOKEN'
       });
     }
 
@@ -171,15 +275,42 @@ export const verifyFirebaseToken = async (req, res, next) => {
     const adminDoc = await db.collection('admin').doc(decodedToken.uid).get();
     
     if (adminDoc.exists) {
-      // Administrateur existant avec profil complet
-      req.user = {
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-        emailVerified: decodedToken.email_verified,
-        name: decodedToken.name,
-        picture: decodedToken.picture,
-        ...adminDoc.data()
-      };
+      const adminData = adminDoc.data();
+      
+      // IMPORTANT : Le super admin ne peut JAMAIS être désactivé
+      if (adminData.role === UserRoles.SUPER_ADMIN) {
+        req.user = {
+          uid: decodedToken.uid,
+          email: decodedToken.email,
+          emailVerified: decodedToken.email_verified,
+          name: decodedToken.name,
+          picture: decodedToken.picture,
+          ...adminData,
+          isActive: true, // FORCE l'activation pour le super admin
+          isBlocked: false, // FORCE le déblocage pour le super admin
+          isSuperAdmin: true
+        };
+      } else {
+        // Vérifier si le compte est actif (sauf pour super admin)
+        if (adminData.isActive === false || adminData.isBlocked) {
+          return res.status(403).json({ 
+            success: false,
+            error: 'Compte désactivé',
+            message: 'Votre compte a été désactivé. Contactez l\'administrateur.',
+            code: 'ACCOUNT_DISABLED'
+          });
+        }
+        
+        // Administrateur existant avec profil complet
+        req.user = {
+          uid: decodedToken.uid,
+          email: decodedToken.email,
+          emailVerified: decodedToken.email_verified,
+          name: decodedToken.name,
+          picture: decodedToken.picture,
+          ...adminData
+        };
+      }
     } else {
       // Nouvel administrateur ou administrateur sans profil
       req.user = {
@@ -198,7 +329,10 @@ export const verifyFirebaseToken = async (req, res, next) => {
   } catch (error) {
     console.error('Erreur de vérification du token:', error);
     return res.status(401).json({ 
-      error: 'Token d\'authentification invalide' 
+      success: false,
+      error: 'Token d\'authentification invalide',
+      message: 'Votre session a expiré. Veuillez vous reconnecter.',
+      code: 'INVALID_TOKEN'
     });
   }
 };

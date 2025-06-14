@@ -176,7 +176,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
 }));
 
 // Routes API
-app.use('/api/users', adminRoutes); // Redirection vers gestion des admins
+app.use('/api/users', userRoutes); // Routes utilisateurs avec profil
 app.use('/api/data', dataRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/complaints', complaintRoutes);

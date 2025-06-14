@@ -5,7 +5,8 @@ import {
   logout, 
   verifyToken, 
   getProfile, 
-  changePassword 
+  changePassword,
+  getTokenInfo
 } from '../controllers/authController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -172,6 +173,7 @@ const router = express.Router();
 
 // Routes publiques (sans authentification)
 router.post('/login', login);
+router.get('/token-info', getTokenInfo); // Route publique pour analyser n'importe quel token
 
 // Routes protégées (avec authentification)
 router.use(authenticateToken); // Middleware d'authentification pour toutes les routes suivantes
