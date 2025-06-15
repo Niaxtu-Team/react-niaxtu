@@ -1,0 +1,308 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===== FONCTIONS UTILITAIRES =====
+    
+    // Vérifier si l'utilisateur est authentifié
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Obtenir l'ID de l'utilisateur connecté
+    function getUserId() {
+      return request.auth.uid;
+    }
+    
+    // Vérifier si l'utilisateur est propriétaire de la ressource
+    function isOwner(userId) {
+      return isAuthenticated() && getUserId() == userId;
+    }
+    
+    // Obtenir les données utilisateur depuis la collection 'admin'
+    function getUserData() {
+      return get(/databases/$(database)/documents/admin/$(getUserId())).data;
+    }
+    
+    // Vérifier le rôle de l'utilisateur
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+    
+    // Vérifier si l'utilisateur a l'un des rôles admin
+    function isAdmin() {
+      return hasRole('super_admin') || hasRole('admin');
+    }
+    
+    // Vérifier si l'utilisateur est super admin
+    function isSuperAdmin() {
+      return hasRole('super_admin');
+    }
+    
+    // Vérifier si l'utilisateur est gestionnaire de secteur
+    function isSectorManager() {
+      return hasRole('sector_manager') || isAdmin();
+    }
+    
+    // Vérifier si l'utilisateur est gestionnaire de structure
+    function isStructureManager() {
+      return hasRole('structure_manager') || isSectorManager();
+    }
+    
+    // Vérifier si l'utilisateur est modérateur
+    function isModerator() {
+      return hasRole('moderator') || isAdmin();
+    }
+    
+    // Vérifier si l'utilisateur est analyste
+    function isAnalyst() {
+      return hasRole('analyst') || isModerator();
+    }
+    
+    // Vérifier si l'utilisateur peut gérer d'autres utilisateurs
+    function canManageUsers() {
+      return isAdmin() || isSectorManager();
+    }
+    
+    // Vérifier si l'utilisateur est actif
+    function isActiveUser() {
+      return isAuthenticated() && getUserData().isActive == true;
+    }
+    
+    // ===== RÈGLES POUR LA COLLECTION USERS =====
+    
+    match /users/{userId} {
+      // Lecture : utilisateurs authentifiés peuvent lire leur propre profil
+      // Les admins peuvent lire tous les profils
+      allow read: if isAuthenticated() && 
+        (isOwner(userId) || isAdmin() || isModerator());
+      
+      // Écriture : utilisateurs peuvent modifier leur propre profil (champs limités)
+      // Les admins peuvent tout modifier
+      allow write: if isAuthenticated() && 
+        (isOwner(userId) || canManageUsers()) && 
+        isActiveUser();
+      
+      // Création : seulement les admins peuvent créer des utilisateurs
+      allow create: if canManageUsers() && isActiveUser();
+      
+      // Suppression : seulement les super admins
+      allow delete: if isSuperAdmin();
+    }
+    
+    // ===== RÈGLES POUR LA COLLECTION ADMIN =====
+    
+    match /admin/{adminId} {
+      // Lecture : admin peut lire son propre profil, super admin peut tout lire
+      allow read: if isAuthenticated() && 
+        (isOwner(adminId) || isSuperAdmin());
+      
+      // Écriture : admin peut modifier son profil (champs limités), super admin peut tout
+      allow write: if isAuthenticated() && 
+        (isOwner(adminId) || isSuperAdmin());
+      
+      // Création : seulement les super admins
+      allow create: if isSuperAdmin();
+      
+      // Suppression : seulement les super admins
+      allow delete: if isSuperAdmin();
+    }
+    
+    // ===== RÈGLES POUR LA COLLECTION COMPLAINTS (PLAINTES) =====
+    
+    match /complaints/{complaintId} {
+      // Lecture : 
+      // - Utilisateurs normaux : leurs propres plaintes
+      // - Admins et modérateurs : toutes les plaintes
+      allow read: if isAuthenticated() && 
+        (isOwner(resource.data.userId) || isAdmin() || isModerator() || isAnalyst());
+      
+      // Création : utilisateurs authentifiés et actifs
+      allow create: if isAuthenticated() && isActiveUser();
+      
+      // Modification : 
+      // - Propriétaire : seulement certains champs (status != 'resolved')
+      // - Admins/Modérateurs : tous les champs
+      allow update: if isAuthenticated() && isActiveUser() &&
+        (isOwner(resource.data.userId) || isAdmin() || isModerator());
+      
+      // Suppression : seulement les admins
+      allow delete: if isAdmin();
+    }
+    
+    // ===== RÈGLES POUR LES COLLECTIONS DE RÉFÉRENCE (LECTURE SEULE POUR USERS) =====
+    
+    // Collection Ministères
+    match /ministères/{ministereId} {
+      // Lecture : tous les utilisateurs authentifiés
+      allow read: if isAuthenticated();
+      
+      // Écriture : seulement les admins et gestionnaires de structure
+      allow write: if isStructureManager();
+      
+      // Création/Suppression : seulement les admins
+      allow create, delete: if isAdmin();
+    }
+    
+    // Collection Directions
+    match /directions/{directionId} {
+      // Lecture : tous les utilisateurs authentifiés
+      allow read: if isAuthenticated();
+      
+      // Écriture : seulement les admins et gestionnaires de structure
+      allow write: if isStructureManager();
+      
+      // Création/Suppression : seulement les admins
+      allow create, delete: if isAdmin();
+    }
+    
+    // Collection Secteurs
+    match /secteurs/{secteurId} {
+      // Lecture : tous les utilisateurs authentifiés
+      allow read: if isAuthenticated();
+      
+      // Écriture : gestionnaires de secteur et admins
+      allow write: if isSectorManager();
+      
+      // Création/Suppression : seulement les admins
+      allow create, delete: if isAdmin();
+    }
+    
+    // Collection Sous-secteurs
+    match /sous_secteurs/{sousSecteurId} {
+      // Lecture : tous les utilisateurs authentifiés
+      allow read: if isAuthenticated();
+      
+      // Écriture : gestionnaires de secteur et admins
+      allow write: if isSectorManager();
+      
+      // Création/Suppression : seulement les admins
+      allow create, delete: if isAdmin();
+    }
+    
+    // Collection Services
+    match /services/{serviceId} {
+      // Lecture : tous les utilisateurs authentifiés
+      allow read: if isAuthenticated();
+      
+      // Écriture : gestionnaires de structure et admins
+      allow write: if isStructureManager();
+      
+      // Création/Suppression : seulement les admins
+      allow create, delete: if isAdmin();
+    }
+    
+    // ===== RÈGLES POUR LES COLLECTIONS DE CONFIGURATION =====
+    
+    // Types de plaintes
+    match /complaintTypes/{typeId} {
+      allow read: if isAuthenticated();
+      allow write: if isSectorManager();
+      allow create, delete: if isAdmin();
+    }
+    
+    // Types de cibles
+    match /targetTypes/{targetId} {
+      allow read: if isAuthenticated();
+      allow write: if isSectorManager();
+      allow create, delete: if isAdmin();
+    }
+    
+    // Secteurs
+    match /sectors/{sectorId} {
+      allow read: if isAuthenticated();
+      allow write: if isSectorManager();
+      allow create, delete: if isAdmin();
+    }
+    
+    // ===== RÈGLES POUR LES STATISTIQUES ET RAPPORTS =====
+    
+    match /statistics/{statId} {
+      // Lecture : analystes et niveaux supérieurs
+      allow read: if isAnalyst();
+      
+      // Écriture : seulement le système (via fonctions Cloud)
+      allow write: if false;
+    }
+    
+    match /reports/{reportId} {
+      // Lecture : analystes et niveaux supérieurs
+      allow read: if isAnalyst();
+      
+      // Création : modérateurs et niveaux supérieurs
+      allow create: if isModerator();
+      
+      // Modification/Suppression : admins seulement
+      allow update, delete: if isAdmin();
+    }
+    
+    // ===== RÈGLES POUR LES LOGS ET AUDITS =====
+    
+    match /logs/{logId} {
+      // Lecture : admins seulement
+      allow read: if isAdmin();
+      
+      // Écriture : interdite (géré par le système)
+      allow write: if false;
+    }
+    
+    match /audit/{auditId} {
+      // Lecture : super admins seulement
+      allow read: if isSuperAdmin();
+      
+      // Écriture : interdite (géré par le système)
+      allow write: if false;
+    }
+    
+    // ===== RÈGLES POUR LES MÉDIAS ET FICHIERS =====
+    
+    match /media/{mediaId} {
+      // Lecture : propriétaire ou admin
+      allow read: if isAuthenticated() && 
+        (isOwner(resource.data.uploadedBy) || isAdmin());
+      
+      // Création : utilisateurs authentifiés
+      allow create: if isAuthenticated() && isActiveUser();
+      
+      // Suppression : propriétaire ou admin
+      allow delete: if isAuthenticated() && 
+        (isOwner(resource.data.uploadedBy) || isAdmin());
+    }
+    
+    // ===== RÈGLES POUR LES NOTIFICATIONS =====
+    
+    match /notifications/{notificationId} {
+      // Lecture : destinataire ou admin
+      allow read: if isAuthenticated() && 
+        (isOwner(resource.data.userId) || isAdmin());
+      
+      // Modification : destinataire (pour marquer comme lu)
+      allow update: if isAuthenticated() && 
+        isOwner(resource.data.userId);
+      
+      // Création : système ou admin
+      allow create: if isAdmin();
+      
+      // Suppression : admin seulement
+      allow delete: if isAdmin();
+    }
+    
+    // ===== RÈGLES POUR LES PARAMÈTRES SYSTÈME =====
+    
+    match /settings/{settingId} {
+      // Lecture : admins seulement
+      allow read: if isAdmin();
+      
+      // Écriture : super admins seulement
+      allow write: if isSuperAdmin();
+    }
+    
+    // ===== RÈGLE PAR DÉFAUT - INTERDIRE TOUT LE RESTE =====
+    
+    // Toute autre collection non spécifiée est interdite
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+} 

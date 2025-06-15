@@ -16,7 +16,7 @@ import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import 'chart.js/auto';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import { ArrowDownToDotIcon, BowArrow, List, Plus, PlusIcon } from 'lucide-react';
-import { Sidebar } from '../components/layout';
+import { Sidebar } from '../../components/layout';
 
 ChartJS.register(
   CategoryScale,

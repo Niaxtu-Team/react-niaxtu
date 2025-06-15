@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../hooks/useAuth';
 import { PERMISSIONS, ROLES, ROLE_LABELS, PERMISSION_LABELS } from '../../constants/roles';
 
 const AuthDebugPanel = () => {

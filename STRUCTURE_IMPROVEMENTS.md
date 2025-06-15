@@ -47,7 +47,7 @@ src/
 
 #### **PageLayout**
 ```jsx
-import { PageLayout } from '../components/layout';
+import { PageLayout } from '../../components/layout';
 
 <PageLayout title="Mon titre" icon={MonIcon}>
   {/* Contenu */}
@@ -56,7 +56,7 @@ import { PageLayout } from '../components/layout';
 
 #### **FormLayout**
 ```jsx
-import { FormLayout } from '../components/forms';
+import { FormLayout } from '../../components/forms';
 
 <FormLayout
   title="Nouveau formulaire"
@@ -69,7 +69,7 @@ import { FormLayout } from '../components/forms';
 
 #### **ListLayout**
 ```jsx
-import { ListLayout } from '../components/tables';
+import { ListLayout } from '../../components/tables';
 
 <ListLayout
   title="Ma liste"
@@ -92,7 +92,7 @@ const [message, setMessage] = useState('');
 #### **Après** (NouveauTypePlainte.refactored.jsx - 75 lignes)
 ```jsx
 // Code modulaire avec composants réutilisables
-import { FormLayout, FormField } from '../components/forms';
+import { FormLayout, FormField } from '../../components/forms';
 import { validateRequired } from '../utils';
 
 // Logique métier séparée, validation centralisée

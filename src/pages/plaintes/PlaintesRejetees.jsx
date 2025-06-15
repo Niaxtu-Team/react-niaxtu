@@ -21,8 +21,14 @@ import {
   Target,
   Info
 } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import usePlaintes from '../hooks/usePlaintes';
+import { useAuth } from '../../hooks/useAuth';
+import usePlaintes from '../../hooks/usePlaintes';
+import { 
+  ComplaintCard,
+  ComplaintFilters,
+  ComplaintStats,
+  Pagination
+} from '../../components';
 
 const PlaintesRejetees = () => {
   const { user } = useAuth();

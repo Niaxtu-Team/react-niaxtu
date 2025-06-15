@@ -24,7 +24,7 @@ import {
   Calendar,
   RefreshCw
 } from 'lucide-react';
-import { useStatisticsAPI } from '../hooks/useStatisticsAPI';
+import { useStatisticsAPI } from '../../hooks/useStatisticsAPI';
 
 // Enregistrer les composants Chart.js
 ChartJS.register(

@@ -1,6 +1,6 @@
 import { AlertTriangle, Plus } from 'lucide-react';
-import { ListLayout } from '../components/tables';
-import { Button } from '../components/ui';
+import { ListLayout } from '../../components/tables';
+import { Button } from '../../components/ui';
 import { COMPLAINT_STATUS, STATUS_COLORS } from '../constants';
 import { generateComplaintId, formatDate } from '../utils';
 

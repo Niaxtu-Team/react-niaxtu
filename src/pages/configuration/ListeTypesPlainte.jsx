@@ -1,21 +1,13 @@
 import { useState, useEffect } from 'react';
+import { Tag, Plus, RefreshCw, AlertTriangle } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 import { 
-  FileText, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Search, 
-  Eye, 
-  ToggleLeft, 
-  ToggleRight,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Tag,
-  RefreshCw,
-  BarChart3
-} from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+  SearchBar, 
+  FilterPanel, 
+  Pagination, 
+  StatCardGrid, 
+  TypeCard 
+} from '../../components';
 
 export default function ListeTypesPlainte() {
   const { apiService } = useAuth();
@@ -97,15 +89,73 @@ export default function ListeTypesPlainte() {
     }
   };
 
-  // Formater la date
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).format(date);
+  // Actions sur les types
+  const handleViewType = (type) => {
+    // Navigation vers les détails/statistiques
+    window.location.href = `/admin/plaintes/types/${type.id}/stats`;
   };
+
+  const handleEditType = (type) => {
+    // Navigation vers l'édition
+    window.location.href = `/admin/plaintes/types/${type.id}/edit`;
+  };
+
+  // Configuration des filtres
+  const filterOptions = [
+    {
+      key: 'isActive',
+      label: 'Statut',
+      options: [
+        { value: 'all', label: 'Tous les statuts' },
+        { value: 'true', label: 'Actifs seulement' },
+        { value: 'false', label: 'Inactifs seulement' }
+      ]
+    },
+    {
+      key: 'sectorId',
+      label: 'Secteur',
+      options: [
+        { value: 'all', label: 'Tous les secteurs' },
+        { value: 'sante', label: 'Santé' },
+        { value: 'transport', label: 'Transport' },
+        { value: 'education', label: 'Éducation' },
+        { value: 'eau', label: 'Eau et assainissement' },
+        { value: 'energie', label: 'Énergie' }
+      ]
+    }
+  ];
+
+  // Statistiques pour les cartes
+  const stats = [
+    {
+      title: 'Total types',
+      value: types.length,
+      icon: Tag,
+      color: 'purple',
+      trend: null
+    },
+    {
+      title: 'Types actifs',
+      value: types.filter(t => t.isActive).length,
+      icon: Tag,
+      color: 'green',
+      trend: null
+    },
+    {
+      title: 'Types inactifs',
+      value: types.filter(t => !t.isActive).length,
+      icon: Tag,
+      color: 'red',
+      trend: null
+    },
+    {
+      title: 'Plaintes totales',
+      value: types.reduce((sum, t) => sum + (t.complaintCount || 0), 0),
+      icon: Tag,
+      color: 'blue',
+      trend: null
+    }
+  ];
 
   if (loading) {
     return (
@@ -134,9 +184,6 @@ export default function ListeTypesPlainte() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <span className="bg-purple-500 text-white px-4 py-2 rounded-lg font-medium">
-                {types.length} types
-              </span>
               <button
                 onClick={() => window.location.href = '/admin/plaintes/types/nouveau'}
                 className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
@@ -155,44 +202,24 @@ export default function ListeTypesPlainte() {
           </div>
         </div>
 
-        {/* Filtres et recherche */}
+        {/* Statistiques */}
+        <StatCardGrid stats={stats} className="mb-6" />
+
+        {/* Recherche et filtres */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-64">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="Rechercher un type de plainte..."
-                />
-              </div>
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1">
+              <SearchBar
+                value={searchTerm}
+                onChange={setSearchTerm}
+                placeholder="Rechercher un type de plainte..."
+              />
             </div>
-
-            <select
-              value={filters.isActive}
-              onChange={(e) => setFilters(prev => ({ ...prev, isActive: e.target.value }))}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="true">Actifs seulement</option>
-              <option value="false">Inactifs seulement</option>
-            </select>
-
-            <select
-              value={filters.sectorId}
-              onChange={(e) => setFilters(prev => ({ ...prev, sectorId: e.target.value }))}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="all">Tous les secteurs</option>
-              <option value="sante">Santé</option>
-              <option value="transport">Transport</option>
-              <option value="education">Éducation</option>
-              <option value="eau">Eau et assainissement</option>
-              <option value="energie">Énergie</option>
-            </select>
+            <FilterPanel
+              filters={filters}
+              onFiltersChange={setFilters}
+              options={filterOptions}
+            />
           </div>
         </div>
 
@@ -205,158 +232,44 @@ export default function ListeTypesPlainte() {
         )}
 
         {/* Liste des types */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          {types.length === 0 ? (
-            <div className="p-12 text-center">
-              <Tag className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-medium text-gray-900 mb-2">Aucun type de plainte</h3>
-              <p className="text-gray-500 mb-4">Commencez par créer votre premier type de plainte</p>
-              <button
-                onClick={() => window.location.href = '/admin/plaintes/types/nouveau'}
-                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Créer un type
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nom du type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Secteur
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Statut
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Plaintes
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Créé le
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {types.map((type) => (
-                    <tr key={type.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                            <Tag className="w-5 h-5 text-purple-600" />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {type.name}
-                            </div>
-                            {type.description && (
-                              <div className="text-sm text-gray-500 truncate max-w-xs">
-                                {type.description}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {type.sectorName || type.sectorId}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => handleToggleType(type.id, type.isActive)}
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                            type.isActive 
-                              ? 'bg-green-100 text-green-800 hover:bg-green-200' 
-                              : 'bg-red-100 text-red-800 hover:bg-red-200'
-                          }`}
-                        >
-                          {type.isActive ? (
-                            <><ToggleRight className="w-3 h-3 mr-1" /> Actif</>
-                          ) : (
-                            <><ToggleLeft className="w-3 h-3 mr-1" /> Inactif</>
-                          )}
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div className="flex items-center">
-                          <BarChart3 className="w-4 h-4 mr-2 text-gray-400" />
-                          {type.complaintCount || 0}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(type.createdAt)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => {/* Navigation vers statistiques */}}
-                            className="text-gray-400 hover:text-blue-500 transition-colors"
-                            title="Voir statistiques"
-                          >
-                            <BarChart3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => {/* Navigation vers détails */}}
-                            className="text-gray-400 hover:text-blue-500 transition-colors"
-                            title="Voir détails"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => {/* Navigation vers édition */}}
-                            className="text-gray-400 hover:text-yellow-500 transition-colors"
-                            title="Modifier"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteType(type.id)}
-                            className="text-gray-400 hover:text-red-500 transition-colors"
-                            title="Supprimer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        {types.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+            <Tag className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-medium text-gray-900 mb-2">Aucun type de plainte</h3>
+            <p className="text-gray-500 mb-4">Commencez par créer votre premier type de plainte</p>
+            <button
+              onClick={() => window.location.href = '/admin/plaintes/types/nouveau'}
+              className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Créer un type
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+            {types.map((type) => (
+              <TypeCard
+                key={type.id}
+                type={type}
+                onView={handleViewType}
+                onEdit={handleEditType}
+                onDelete={() => handleDeleteType(type.id)}
+                onToggleStatus={handleToggleType}
+                showSector={true}
+                showCode={true}
+                showKeywords={true}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-between bg-white rounded-lg shadow-sm p-4">
-            <div className="text-sm text-gray-700">
-              Page {currentPage} sur {totalPages}
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Précédent
-              </button>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Suivant
-              </button>
-            </div>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         )}
       </div>
     </div>

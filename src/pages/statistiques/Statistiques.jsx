@@ -45,9 +45,9 @@ import {
   Star,
   Shield
 } from 'lucide-react';
-import { useAdvancedStats } from '../hooks/useAdvancedStats';
-import { usePlaintes } from '../hooks/usePlaintes';
-import { useAuth } from '../hooks/useAuth';
+import { useAdvancedStats } from '../../hooks/useAdvancedStats';
+import { usePlaintes } from '../../hooks/usePlaintes';
+import { useAuth } from '../../hooks/useAuth';
 
 ChartJS.register(
   CategoryScale,

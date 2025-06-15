@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../hooks/useAuth';
 import { apiService } from '../../services/apiService';
 import ProtectedRoute from '../ProtectedRoute';
 import { PERMISSIONS, ROLES } from '../../constants/roles';

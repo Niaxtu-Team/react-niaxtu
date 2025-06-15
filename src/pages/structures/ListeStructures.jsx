@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Landmark, Plus, Edit, Trash2, Building, FileText, Search, Eye } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function ListeStructures() {
   const { apiService, hasPermission } = useAuth();

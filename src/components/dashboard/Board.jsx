@@ -1,5 +1,7 @@
  import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import Card from "../ui/Card";
+
+const CardContent = Card.Content;
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Search, Settings, Users, FileText, LayoutDashboard } from "lucide-react";
 

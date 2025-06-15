@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { 
   Users, 
   UserPlus, 
   Shield, 
   Settings, 
-  Eye, 
-  Edit, 
-  Trash2, 
   Crown, 
   Building, 
   BarChart3,
@@ -16,15 +13,24 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Search,
-  Filter,
-  Download,
   RefreshCw,
   Key,
   History,
   Plus,
-  X
+  X,
+  Eye,
+  Edit,
+  Trash2,
+  Download
 } from 'lucide-react';
+import { 
+  SearchBar, 
+  FilterPanel, 
+  StatusBadge, 
+  RoleBadge,
+  ActionButtons,
+  AdminCard
+} from '../../components';
 
 const GestionAdmins = () => {
   const location = useLocation();
@@ -392,111 +398,47 @@ const GestionAdmins = () => {
           <div className="p-8">
             {activeTab === 'liste' && (
               <div className="space-y-6">
-                {/* Barre de recherche et filtres */}
-                <div className="flex items-center space-x-4">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      placeholder="Rechercher par nom ou email..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 border-2 border-gray-200/50 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white/50 backdrop-blur-sm"
-                    />
-                  </div>
-                  <select
-                    value={filterRole}
-                    onChange={(e) => setFilterRole(e.target.value)}
-                    className="px-4 py-3 border-2 border-gray-200/50 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white/50 backdrop-blur-sm"
-                  >
-                    <option value="">Tous les rôles</option>
-                    {roles.map(role => (
-                      <option key={role.value} value={role.value}>{role.label}</option>
-                    ))}
-                  </select>
+                {/* Barre de recherche et filtres avec nouveaux composants */}
+                <div className="space-y-4">
+                  <SearchBar
+                    placeholder="Rechercher par nom ou email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    size="medium"
+                  />
+                  
+                  <FilterPanel
+                    filters={{ role: filterRole }}
+                    onFiltersChange={(newFilters) => setFilterRole(newFilters.role || '')}
+                    onReset={() => setFilterRole('')}
+                    showPanel={true}
+                    filterOptions={{
+                      role: {
+                        type: 'select',
+                        label: 'Rôle',
+                        options: roles.map(role => ({ value: role.value, label: role.label }))
+                      }
+                    }}
+                  />
                 </div>
 
-                {/* Liste des administrateurs */}
+                {/* Liste des administrateurs avec AdminCard */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {filteredAdmins.map((admin, index) => {
-                    const roleInfo = getRoleInfo(admin.role);
-                    const IconComponent = roleInfo.icon;
-                    
-                    return (
-                      <div 
-                        key={admin.id} 
-                        className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                        style={{ 
-                          animationDelay: `${index * 100}ms`,
-                          animation: 'fadeInUp 0.6s ease-out forwards'
-                        }}
-                      >
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                              <span className="text-white font-bold text-lg">
-                                {admin.nom?.charAt(0)?.toUpperCase() || 'A'}
-                              </span>
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-bold text-gray-900">{admin.nom}</h3>
-                              <p className="text-gray-600 text-sm">{admin.email}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <div className={`w-3 h-3 rounded-full ${
-                              admin.status === 'active' ? 'bg-green-500' : 'bg-red-500'
-                            }`}></div>
-                            <span className={`text-xs font-semibold ${
-                              admin.status === 'active' ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {admin.status === 'active' ? 'Actif' : 'Inactif'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="mb-4">
-                          <div className={`inline-flex items-center px-3 py-2 rounded-xl text-xs font-bold ${roleInfo.color}`}>
-                            <IconComponent className="w-4 h-4 mr-2" />
-                            {roleInfo.label}
-                          </div>
-                          <p className="text-gray-600 text-sm mt-2">{roleInfo.description}</p>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                          <span>Créé le {formatDate(admin.createdAt)}</span>
-                          <span>{admin.permissions?.length || 0} permissions</span>
-                        </div>
-
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleViewAdmin(admin)}
-                            className="flex-1 flex items-center justify-center px-3 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-all duration-200 text-sm font-semibold"
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            Voir
-                          </button>
-                          {hasPermission('MANAGE_USERS') && (
-                            <button
-                              onClick={() => handleEditAdmin(admin)}
-                              className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all duration-200 text-sm font-semibold"
-                            >
-                              <Edit className="w-4 h-4 mr-1" />
-                              Éditer
-                            </button>
-                          )}
-                          {hasPermission('DELETE_USERS') && admin.role !== 'super_admin' && (
-                            <button
-                              onClick={() => handleDeleteAdmin(admin)}
-                              className="flex items-center justify-center px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-all duration-200 text-sm font-semibold"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {filteredAdmins.map((admin, index) => (
+                    <AdminCard
+                      key={admin.id}
+                      admin={admin}
+                      onView={handleViewAdmin}
+                      onEdit={hasPermission('MANAGE_USERS') ? handleEditAdmin : undefined}
+                      onDelete={hasPermission('DELETE_USERS') && admin.role !== 'super_admin' ? handleDeleteAdmin : undefined}
+                      showActions={true}
+                      showStats={false}
+                      className={`animate-in fade-in-0 slide-in-from-bottom-4`}
+                      style={{ 
+                        animationDelay: `${index * 100}ms`
+                      }}
+                    />
+                  ))}
                 </div>
 
                 {filteredAdmins.length === 0 && (

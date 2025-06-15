@@ -25,4 +25,7 @@ export function ThemeProvider({ children }) {
 
 export function useTheme() {
   return useContext(ThemeContext);
-} 
+}
+
+// Export par défaut du contexte
+export default ThemeContext;

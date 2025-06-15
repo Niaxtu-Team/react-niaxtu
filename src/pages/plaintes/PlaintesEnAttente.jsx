@@ -22,11 +22,17 @@ import {
   TrendingUp,
   Zap
 } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import usePlaintes from '../hooks/usePlaintes';
+import { useAuth } from '../../hooks/useAuth';
+import usePlaintes from '../../hooks/usePlaintes';
+import { 
+  ComplaintCard,
+  ComplaintFilters,
+  ComplaintStats,
+  Pagination
+} from '../../components';
 
 const PlaintesEnAttente = () => {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { getPlaintes, updatePlainteStatus, loading, error } = usePlaintes();
   
   const [plaintes, setPlaintes] = useState([]);
@@ -46,27 +52,34 @@ const PlaintesEnAttente = () => {
     nouvelles: 0
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [complaintTypes, setComplaintTypes] = useState([]);
+  const [targetTypes, setTargetTypes] = useState([]);
+  const [ministeres, setMinisteres] = useState([]);
 
   const itemsPerPage = 12;
 
   // Charger les plaintes en attente
   const loadPlaintes = async (page = 1) => {
     try {
-      const filters = {
+      const searchFilters = {
         status: 'en-attente',
         limit: itemsPerPage,
         page: page,
         isDraft: false
       };
 
-      const result = await getPlaintes(filters);
+      if (searchTerm) {
+        searchFilters.search = searchTerm.trim();
+      }
+
+      const result = await getPlaintes(searchFilters);
       
-      setPlaintes(result.plaintes);
-      setFilteredPlaintes(result.plaintes);
-      setTotalPages(Math.ceil(result.total / itemsPerPage));
+      setPlaintes(result.plaintes || []);
+      setFilteredPlaintes(result.plaintes || []);
+      setTotalPages(Math.ceil((result.total || 0) / itemsPerPage));
       
       // Calculer les statistiques
-      calculateStats(result.plaintes);
+      calculateStats(result.plaintes || []);
       
     } catch (err) {
       console.error('Erreur lors du chargement des plaintes:', err);
@@ -76,7 +89,7 @@ const PlaintesEnAttente = () => {
   // Calculer les statistiques
   const calculateStats = (plaintesData) => {
     const now = new Date();
-    const urgentes = plaintesData.filter(p => p.priority === 'urgente' || p.priority === 'elevee').length;
+    const urgentes = plaintesData.filter(p => p.priority === 'urgente' || p.priority === 'critique').length;
     const anciennes = plaintesData.filter(p => {
       const createdAt = new Date(p.createdAt);
       const diffDays = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
@@ -105,11 +118,17 @@ const PlaintesEnAttente = () => {
 
   // Démarrer le traitement d'une plainte
   const handleStartTraitement = async (plainteId) => {
+    if (!hasPermission('MANAGE_COMPLAINTS')) {
+      alert('Permission insuffisante pour traiter les plaintes');
+      return;
+    }
+
     try {
       await updatePlainteStatus(plainteId, 'en-traitement', 'Traitement démarré par ' + user?.name);
       await loadPlaintes(currentPage); // Recharger les données
     } catch (err) {
       console.error('Erreur lors du démarrage du traitement:', err);
+      alert('Erreur lors du démarrage du traitement');
     }
   };
 
@@ -217,6 +236,22 @@ const PlaintesEnAttente = () => {
     a.href = url;
     a.download = `plaintes-en-attente-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
+  };
+
+  // Statistiques personnalisées pour les plaintes en attente
+  const customStats = {
+    total: stats.total,
+    enAttente: stats.total, // Toutes sont en attente
+    urgentes: stats.urgentes,
+    anciennes: stats.anciennes,
+    nouvelles: stats.nouvelles,
+    trends: {
+      total: null,
+      enAttente: null,
+      urgentes: null,
+      anciennes: null,
+      nouvelles: null
+    }
   };
 
   if (loading && plaintes.length === 0) {
@@ -424,73 +459,17 @@ const PlaintesEnAttente = () => {
             <div className="p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredPlaintes.map((plainte, index) => (
-                  <div 
-                    key={plainte.id} 
-                    className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                    style={{ 
-                      animationDelay: `${index * 100}ms`,
-                      animation: 'fadeInUp 0.6s ease-out forwards'
-                    }}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 p-2 rounded-lg shadow-lg">
-                          <FileText className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-lg font-bold text-gray-900 line-clamp-1">
-                            {plainte.complaintType}
-                          </h3>
-                          <p className="text-gray-600 text-sm">#{plainte.id?.slice(-8)}</p>
-                        </div>
-                      </div>
-                      <div className={`px-2 py-1 rounded-full text-xs font-bold ${getPriorityColor(plainte.priority)}`}>
-                        {plainte.priority}
-                      </div>
-                    </div>
-
-                    <p className="text-gray-700 text-sm mb-4 line-clamp-3">
-                      {plainte.description}
-                    </p>
-
-                    <div className="space-y-2 text-xs text-gray-600 mb-4">
-                      <div className="flex items-center">
-                        <Building className="w-3 h-3 mr-2" />
-                        {plainte.targetType}
-                      </div>
-                      <div className="flex items-center">
-                        <Calendar className="w-3 h-3 mr-2" />
-                        {new Date(plainte.createdAt).toLocaleDateString('fr-FR')}
-                      </div>
-                      <div className={`flex items-center ${getTempsAttenteColor(plainte.createdAt)}`}>
-                        <Clock className="w-3 h-3 mr-2" />
-                        En attente depuis {getTempsAttente(plainte.createdAt)}
-                      </div>
-                      {plainte.location?.address && (
-                        <div className="flex items-center">
-                          <MapPin className="w-3 h-3 mr-2" />
-                          {plainte.location.address.substring(0, 30)}...
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleViewPlainte(plainte)}
-                        className="flex-1 flex items-center justify-center px-3 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-all duration-200 text-sm font-semibold"
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        Voir
-                      </button>
-                      <button
-                        onClick={() => handleStartTraitement(plainte.id)}
-                        className="flex-1 flex items-center justify-center px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-all duration-200 text-sm font-semibold"
-                      >
-                        <Play className="w-4 h-4 mr-1" />
-                        Traiter
-                      </button>
-                    </div>
-                  </div>
+                  <ComplaintCard
+                    key={plainte.id}
+                    complaint={plainte}
+                    onView={handleViewPlainte}
+                    onStartTreatment={handleStartTraitement}
+                    onDelete={() => {}}
+                    showActions={true}
+                    showPriority={true}
+                    showLocation={true}
+                    showTimestamp={true}
+                  />
                 ))}
               </div>
             </div>

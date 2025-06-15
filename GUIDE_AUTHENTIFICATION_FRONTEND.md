@@ -377,7 +377,7 @@ export const useAuth = () => {
 ```javascript
 // components/ProtectedRoute.js
 import React from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 
 const ProtectedRoute = ({ 
   children, 
@@ -420,7 +420,7 @@ export default ProtectedRoute;
 ```javascript
 // components/UsersList.js
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { apiService } from '../services/apiService';
 import ProtectedRoute from './ProtectedRoute';
 

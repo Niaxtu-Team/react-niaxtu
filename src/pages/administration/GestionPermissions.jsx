@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { Shield, Users, Settings, Save, RotateCcw, AlertCircle, CheckCircle } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import { Shield } from 'lucide-react';
+import { PermissionMatrix } from '../../components';
 
 export default function GestionPermissions() {
   const { apiService, hasPermission, hasRole } = useAuth();
@@ -232,191 +233,47 @@ export default function GestionPermissions() {
       <div className="max-w-7xl mx-auto">
         {/* En-tête */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <span className="bg-purple-100 p-3 rounded-xl shadow text-purple-500">
-                <Shield className="w-7 h-7" />
-              </span>
-              <div className="ml-4">
-                <h1 className="text-3xl font-extrabold text-gray-800">Gestion des Permissions</h1>
-                <p className="text-gray-600">Configurer les permissions par rôle utilisateur</p>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex space-x-3">
-              {hasUnsavedChanges && (
-                <button
-                  onClick={resetChanges}
-                  className="flex items-center px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Annuler
-                </button>
-              )}
-              <button
-                onClick={saveChanges}
-                disabled={saving || !hasUnsavedChanges}
-                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Sauvegarde...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Sauvegarder
-                  </>
-                )}
-              </button>
+          <div className="flex items-center">
+            <span className="bg-purple-100 p-3 rounded-xl shadow text-purple-500">
+              <Shield className="w-7 h-7" />
+            </span>
+            <div className="ml-4">
+              <h1 className="text-3xl font-extrabold text-gray-800">Gestion des Permissions</h1>
+              <p className="text-gray-600">Configurer les permissions par rôle utilisateur</p>
             </div>
           </div>
         </div>
 
         {/* Messages */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start">
-            <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
-            <div>
-              <h3 className="text-sm font-medium text-red-800 mb-1">Erreur</h3>
-              <p className="text-sm text-red-700">{error}</p>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="text-sm">
+              <h3 className="font-medium text-red-800">Erreur</h3>
+              <p className="text-red-700 mt-1">{error}</p>
             </div>
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-start">
-            <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
-            <div>
-              <h3 className="text-sm font-medium text-green-800 mb-1">Succès</h3>
-              <p className="text-sm text-green-700">Les permissions ont été sauvegardées avec succès</p>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="text-sm">
+              <h3 className="font-medium text-green-800">Succès</h3>
+              <p className="text-green-700 mt-1">Les permissions ont été sauvegardées avec succès</p>
             </div>
           </div>
         )}
 
-        {/* Informations importantes */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start">
-            <Settings className="w-5 h-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
-            <div>
-              <h3 className="text-sm font-medium text-blue-800 mb-1">Informations importantes</h3>
-              <ul className="text-sm text-blue-700 space-y-1">
-                <li>• Le rôle "Super Administrateur" ne peut pas être modifié</li>
-                <li>• Les modifications sont appliquées immédiatement après sauvegarde</li>
-                <li>• Les utilisateurs connectés devront se reconnecter pour voir les changements</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Tableau des permissions */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider w-1/3">
-                    Permission
-                  </th>
-                  {systemRoles.map(role => (
-                    <th key={role.key} className="px-6 py-4 text-center text-sm font-medium text-gray-500 uppercase tracking-wider">
-                      <div className="space-y-1">
-                        <div className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${role.color}`}>
-                          {role.label}
-                        </div>
-                        {changes[role.key] && (
-                          <div className="w-2 h-2 bg-orange-400 rounded-full mx-auto"></div>
-                        )}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {availablePermissions.map(category => (
-                  <React.Fragment key={category.category}>
-                    {/* En-tête de catégorie */}
-                    <tr className="bg-gray-100">
-                      <td colSpan={systemRoles.length + 1} className="px-6 py-3">
-                        <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-                          {category.category}
-                        </h3>
-                      </td>
-                    </tr>
-                    
-                    {/* Permissions de la catégorie */}
-                    {category.permissions.map(permission => (
-                      <tr key={permission.key} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {permission.label}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {permission.description}
-                            </div>
-                          </div>
-                        </td>
-                        {systemRoles.map(role => {
-                          const hasPermission = rolePermissions[role.key]?.includes(permission.key) || false;
-                          const isProtected = role.protected && role.key === 'super_admin';
-                          
-                          return (
-                            <td key={role.key} className="px-6 py-4 text-center">
-                              <label className="inline-flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={hasPermission}
-                                  onChange={() => togglePermission(role.key, permission.key)}
-                                  disabled={isProtected}
-                                  className="text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                />
-                              </label>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Résumé des rôles */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {systemRoles.map(role => {
-            const permCount = rolePermissions[role.key]?.length || 0;
-            const totalPerms = availablePermissions.reduce((acc, cat) => acc + cat.permissions.length, 0);
-            
-            return (
-              <div key={role.key} className="bg-white rounded-lg shadow-sm p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`inline-flex px-3 py-1 text-sm font-medium rounded-full border ${role.color}`}>
-                    {role.label}
-                  </div>
-                  {changes[role.key] && (
-                    <div className="w-3 h-3 bg-orange-400 rounded-full"></div>
-                  )}
-                </div>
-                <p className="text-sm text-gray-600 mb-3">{role.description}</p>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Permissions:</span>
-                  <span className="font-medium text-gray-900">{permCount}/{totalPerms}</span>
-                </div>
-                <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(permCount / totalPerms) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* Matrice des permissions */}
+        <PermissionMatrix
+          roles={systemRoles}
+          permissions={availablePermissions}
+          rolePermissions={rolePermissions}
+          onPermissionChange={togglePermission}
+          onSave={saveChanges}
+          onReset={resetChanges}
+          saving={saving}
+          hasChanges={hasUnsavedChanges}
+        />
       </div>
     </div>
   );

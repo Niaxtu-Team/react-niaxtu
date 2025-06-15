@@ -18,7 +18,7 @@ import {
   BarChart3, TrendingUp, Users, AlertTriangle, Activity, PieChart, Target, Clock, Award, Zap, 
   Download, RefreshCw, ArrowUp, ArrowDown, CheckCircle, Timer, Star, Shield, Globe, Building, GitBranch, Settings
 } from 'lucide-react';
-import { useStatisticsAPI } from '../hooks/useStatisticsAPI';
+import { useStatisticsAPI } from '../../hooks/useStatisticsAPI';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, BarElement, RadialLinearScale, Title, Tooltip, Legend, Filler);
 

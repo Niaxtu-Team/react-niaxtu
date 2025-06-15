@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { useStatisticsAPI } from '../hooks/useStatisticsAPI';
+import { useAuth } from '../../hooks/useAuth';
+import { useStatisticsAPI } from '../../hooks/useStatisticsAPI';
 import { 
   LayoutDashboard, 
   AlertTriangle, 

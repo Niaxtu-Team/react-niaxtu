@@ -21,9 +21,17 @@ import {
   Target,
   Sparkles
 } from 'lucide-react';
-import usePlaintes from '../hooks/usePlaintes';
+import { useAuth } from '../../hooks/useAuth';
+import usePlaintes from '../../hooks/usePlaintes';
+import { 
+  ComplaintCard,
+  ComplaintFilters,
+  ComplaintStats,
+  Pagination
+} from '../../components';
 
 const PlaintesResolues = () => {
+  const { hasPermission } = useAuth();
   const { getPlaintes, loading, error } = usePlaintes();
   
   const [plaintes, setPlaintes] = useState([]);
@@ -43,6 +51,9 @@ const PlaintesResolues = () => {
     tempsResolutionMoyen: 0
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [complaintTypes, setComplaintTypes] = useState([]);
+  const [targetTypes, setTargetTypes] = useState([]);
+  const [ministeres, setMinisteres] = useState([]);
 
   const itemsPerPage = 12;
 
@@ -322,13 +333,15 @@ const PlaintesResolues = () => {
                 </button>
               </div>
               
-              <button
-                onClick={exportToCSV}
-                className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Exporter
-              </button>
+              {hasPermission('EXPORT_DATA') && (
+                <button
+                  onClick={exportToCSV}
+                  className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                >
+                  <Download className="w-5 h-5 mr-2" />
+                  Exporter
+                </button>
+              )}
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Tag } from 'lucide-react';
-import { FormLayout, FormField } from '../components/forms';
+import { FormLayout, FormField } from '../../components/forms';
 import { validateRequired, validateLength } from '../utils';
 
 export default function NouveauTypePlainte() {

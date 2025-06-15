@@ -1,34 +1,30 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import useUsers from '../hooks/useUsers';
+import { useAuth } from '../../hooks/useAuth';
+import useUsers from '../../hooks/useUsers';
 import { 
   AlertTriangle, 
   Users, 
-  Search,
   RefreshCw,
-  Eye,
-  Mail,
-  Calendar,
-  Shield,
-  UserCheck,
-  UserX,
-  Filter,
-  Download,
-  Edit,
-  Trash2,
-  MoreHorizontal,
   UserPlus,
   Clock,
   CheckCircle,
   XCircle,
   Crown,
-  Building,
   BarChart3,
   Settings,
   Grid,
   List,
   X
 } from 'lucide-react';
+import { 
+  SearchBar, 
+  FilterPanel, 
+  Pagination, 
+  StatusBadge, 
+  RoleBadge,
+  ActionButtons,
+  AdminCard
+} from '../../components';
 
 export default function Utilisateurs() {
   const { user: _currentUser } = useAuth();
@@ -400,41 +396,44 @@ export default function Utilisateurs() {
             </div>
           )}
 
-          {/* Barre de recherche et filtres */}
-          <div className="flex flex-col lg:flex-row items-center space-y-4 lg:space-y-0 lg:space-x-4">
-            <div className="flex-1 relative w-full">
-              <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Rechercher par nom, email..."
-                value={searchTerm}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="w-full pl-14 pr-6 py-4 border-2 border-gray-200/50 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-300 text-gray-700 placeholder-gray-400 bg-white/50 backdrop-blur-sm"
-              />
-            </div>
+          {/* Barre de recherche et filtres avec nouveaux composants */}
+          <div className="space-y-4">
+            <SearchBar
+              placeholder="Rechercher par nom, email..."
+              value={searchTerm}
+              onChange={(e) => handleSearch(e.target.value)}
+              size="large"
+            />
             
-            <div className="flex space-x-4">
-              <select
-                value={filters.isActive}
-                onChange={(e) => handleFilterChange('isActive', e.target.value)}
-                className="px-4 py-3 border-2 border-gray-200/50 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white/50 backdrop-blur-sm"
-              >
-                <option value="all">Tous les statuts</option>
-                <option value="true">Actifs</option>
-                <option value="false">Inactifs</option>
-              </select>
-              
-              <select
-                value={filters.role}
-                onChange={(e) => handleFilterChange('role', e.target.value)}
-                className="px-4 py-3 border-2 border-gray-200/50 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white/50 backdrop-blur-sm"
-              >
-                <option value="all">Tous les rôles</option>
-                {roles.map(role => (
-                  <option key={role.value} value={role.value}>{role.label}</option>
-                ))}
-              </select>
-            </div>
+            <FilterPanel
+              filters={filters}
+              onFiltersChange={(newFilters) => {
+                Object.keys(newFilters).forEach(key => {
+                  handleFilterChange(key, newFilters[key]);
+                });
+              }}
+              onReset={() => setFilters({ isActive: 'all', role: 'all', dateRange: 'all' })}
+              showPanel={true}
+              filterOptions={{
+                isActive: {
+                  type: 'select',
+                  label: 'Statut',
+                  options: [
+                    { value: 'all', label: 'Tous les statuts' },
+                    { value: 'true', label: 'Actifs' },
+                    { value: 'false', label: 'Inactifs' }
+                  ]
+                },
+                role: {
+                  type: 'select',
+                  label: 'Rôle',
+                  options: [
+                    { value: 'all', label: 'Tous les rôles' },
+                    ...roles.map(role => ({ value: role.value, label: role.label }))
+                  ]
+                }
+              }}
+            />
           </div>
         </div>
 

@@ -22,11 +22,20 @@ import {
   Zap,
   Activity,
   Target,
-  Play
+  Play,
+  XCircle
 } from 'lucide-react';
-import usePlaintes from '../hooks/usePlaintes';
+import { useAuth } from '../../hooks/useAuth';
+import usePlaintes from '../../hooks/usePlaintes';
+import { 
+  ComplaintCard,
+  ComplaintFilters,
+  ComplaintStats,
+  Pagination
+} from '../../components';
 
 const PlaintesEnTraitement = () => {
+  const { hasPermission } = useAuth();
   const { getPlaintes, updatePlainteStatus, loading, error } = usePlaintes();
   
   const [plaintes, setPlaintes] = useState([]);

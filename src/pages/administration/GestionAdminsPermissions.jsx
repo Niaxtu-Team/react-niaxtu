@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Search, Filter, Eye, Edit, Save, X, Check, AlertTriangle, RefreshCw } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import { useAdminPermissions } from '../hooks/useAdminPermissions';
+import { useAuth } from '../../hooks/useAuth';
+import { useAdminPermissions } from '../../hooks/useAdminPermissions';
 
 export default function GestionAdminsPermissions() {
   const { user } = useAuth();

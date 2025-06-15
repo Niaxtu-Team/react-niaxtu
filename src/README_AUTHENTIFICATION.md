@@ -25,7 +25,7 @@ Le système d'authentification Niaxtu a été entièrement refactorisé pour off
 ### 1. Protéger une Route
 
 ```jsx
-import ProtectedRoute from '../components/ProtectedRoute';
+import ProtectedRoute from '../../components/ProtectedRoute';
 import { PERMISSIONS } from '../constants/roles';
 
 // Protection par permission
@@ -42,7 +42,7 @@ import { PERMISSIONS } from '../constants/roles';
 ### 2. Vérifier les Permissions dans un Composant
 
 ```jsx
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { PERMISSIONS } from '../constants/roles';
 
 const MyComponent = () => {
@@ -73,7 +73,7 @@ const MyComponent = () => {
 ### 3. Faire des Requêtes API Sécurisées
 
 ```jsx
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 
 const MyComponent = () => {
   const { apiService } = useAuth();

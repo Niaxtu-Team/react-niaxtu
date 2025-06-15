@@ -1,82 +1,109 @@
-import { useState } from 'react';
-import { Rows3 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Layers, ArrowLeft, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { StructureFormBuilder } from '../../components';
 
 export default function NouveauSousSecteur() {
-  const [nom, setNom] = useState('');
-  const [description, setDescription] = useState('');
-  const [message, setMessage] = useState('');
+  const navigate = useNavigate();
+  const { apiService } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [secteurs, setSecteurs] = useState([]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!nom.trim()) {
-      setMessage('Le nom du sous-secteur est requis.');
-      return;
+  // Charger les secteurs pour le sélecteur
+  useEffect(() => {
+    fetchSecteurs();
+  }, []);
+
+  const fetchSecteurs = async () => {
+    try {
+      const response = await apiService.get('/sectors');
+      if (response.success) {
+        setSecteurs(response.data || []);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des secteurs:', error);
     }
-    setMessage('Sous-secteur créé avec succès !');
-    setNom('');
-    setDescription('');
-    setTimeout(() => setMessage(''), 2500);
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-lg p-8 rounded-2xl shadow-xl bg-white border border-gray-100 animate-fade-in">
-        <div className="flex items-center mb-6">
-          <span className="bg-purple-100 p-3 rounded-xl shadow text-purple-500">
-            <Rows3 className="w-7 h-7" />
-          </span>
-          <h2 className="ml-4 text-3xl font-extrabold text-gray-800 tracking-tight">Nouveau sous-secteur</h2>
+  const handleSubmit = async (formData) => {
+    setLoading(true);
+
+    try {
+      const response = await apiService.post('/sectors/subsectors', formData);
+
+      if (response.success) {
+        setSuccess(true);
+        setTimeout(() => {
+          navigate('/admin/sous-secteurs');
+        }, 2000);
+      } else {
+        throw new Error(response.message || 'Erreur lors de la création du sous-secteur');
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      throw error; // L'erreur sera gérée par StructureFormBuilder
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    navigate('/admin/sous-secteurs');
+  };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Check className="w-8 h-8 text-green-600" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Sous-secteur créé avec succès !</h3>
+          <p className="text-gray-600 mb-4">Le nouveau sous-secteur a été ajouté.</p>
+          <div className="text-sm text-gray-500">Redirection en cours...</div>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-gray-600 font-medium mb-1">Nom du sous-secteur *</label>
-            <input
-              type="text"
-              value={nom}
-              onChange={e => setNom(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-300 transition"
-              placeholder="Nom du sous-secteur"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-600 font-medium mb-1">Description</label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-3 text-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-300 transition resize-none min-h-[60px]"
-              placeholder="Description"
-              rows={3}
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full flex items-center justify-center gap-2 bg-purple-100 text-purple-700 font-bold py-3 rounded-xl shadow hover:bg-purple-200 transition-all duration-200 text-lg"
-          >
-            <Rows3 className="w-5 h-5" />
-            Créer le sous-secteur
-          </button>
-          {message && (
-            <div className="mt-4 text-center animate-bounce-in">
-              <span className="inline-block bg-green-100 text-green-700 px-4 py-2 rounded-full shadow font-semibold">
-                {message}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-4xl mx-auto">
+        {/* En-tête */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <button
+                onClick={handleCancel}
+                className="mr-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <span className="bg-purple-100 p-3 rounded-xl shadow text-purple-500">
+                <Layers className="w-7 h-7" />
               </span>
+              <div className="ml-4">
+                <h1 className="text-3xl font-extrabold text-gray-800">Nouveau Sous-Secteur</h1>
+                <p className="text-gray-600">Créer un nouveau sous-secteur d'activité</p>
+              </div>
             </div>
-          )}
-        </form>
-        <style>{`
-          @keyframes fade-in {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .animate-fade-in { animation: fade-in 0.7s cubic-bezier(.4,2,.6,1) both; }
-          @keyframes bounce-in {
-            0% { transform: scale(0.7); opacity: 0; }
-            60% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); }
-          }
-          .animate-bounce-in { animation: bounce-in 0.7s cubic-bezier(.4,2,.6,1) both; }
-        `}</style>
+          </div>
+        </div>
+
+        {/* Formulaire */}
+        <StructureFormBuilder
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+          loading={loading}
+          type="sous-secteur"
+          parentOptions={secteurs}
+          showContact={false}
+          showLocation={false}
+          showColor={false}
+          showIcon={true}
+        />
       </div>
     </div>
   );
