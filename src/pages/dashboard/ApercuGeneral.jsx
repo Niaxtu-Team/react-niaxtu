@@ -19,15 +19,12 @@ import {
   CheckCircle, 
   Clock, 
   XCircle,
-  Eye,
   Activity,
   BarChart3,
   Calendar,
-  Filter,
   RefreshCw
 } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import { useStats } from '../hooks/useStats';
+import { useStatisticsAPI } from '../hooks/useStatisticsAPI';
 
 // Enregistrer les composants Chart.js
 ChartJS.register(
@@ -43,9 +40,8 @@ ChartJS.register(
 );
 
 export default function ApercuGeneral() {
-  const { user } = useAuth();
-  const { stats, loading, error, fetchComplaintStats, refresh } = useStats();
-  const [selectedPeriod, setSelectedPeriod] = useState('7j');
+  const { stats, loading, error, fetchAdvancedStats } = useStatisticsAPI();
+  const [selectedPeriod, setSelectedPeriod] = useState('7d');
   const [chartData, setChartData] = useState({
     line: null,
     doughnut: null,
@@ -56,20 +52,20 @@ export default function ApercuGeneral() {
   // Charger les données des graphiques
   useEffect(() => {
     loadChartData();
-  }, [selectedPeriod, stats]);
+  }, [stats]);
 
-  const loadChartData = async () => {
+  const loadChartData = () => {
     try {
-      // Récupérer les données détaillées pour les graphiques
-      const complaintStats = await fetchComplaintStats(selectedPeriod);
-      
-      // Préparer les données pour les graphiques
+      // Préparer les données pour le graphique linéaire (évolution)
+      const timelineData = Array.isArray(stats.timeline) ? stats.timeline : [];
       const lineData = {
-        labels: complaintStats.timeline?.labels || ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
+        labels: timelineData.map(item => 
+          new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+        ).slice(-7), // Derniers 7 jours
         datasets: [
           {
             label: 'Nouvelles plaintes',
-            data: complaintStats.timeline?.newComplaints || [12, 19, 15, 27, 22, 18, 10],
+            data: timelineData.map(item => item.complaints || 0).slice(-7),
             borderColor: '#3b82f6',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
             tension: 0.4,
@@ -82,7 +78,7 @@ export default function ApercuGeneral() {
           },
           {
             label: 'Plaintes résolues',
-            data: complaintStats.timeline?.resolvedComplaints || [8, 12, 10, 18, 15, 12, 7],
+            data: timelineData.map(item => item.resolutions || 0).slice(-7),
             borderColor: '#10b981',
             backgroundColor: 'rgba(16, 185, 129, 0.1)',
             tension: 0.4,
@@ -96,15 +92,16 @@ export default function ApercuGeneral() {
         ],
       };
 
+      // Données pour le graphique en secteurs (statuts)
       const doughnutData = {
         labels: ['Résolues', 'En traitement', 'En attente', 'Rejetées'],
         datasets: [
           {
             data: [
-              stats.complaints.resolved, 
-              stats.complaints.inProgress, 
-              stats.complaints.pending, 
-              stats.complaints.rejected
+              stats.overview?.complaints?.resolved || 0, 
+              stats.overview?.complaints?.inProgress || 0, 
+              stats.overview?.complaints?.pending || 0, 
+              stats.overview?.complaints?.rejected || 0
             ],
             backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
             borderWidth: 3,
@@ -114,12 +111,14 @@ export default function ApercuGeneral() {
         ],
       };
 
+      // Données pour le graphique en barres (par ministère)
+      const ministeresData = stats.distributions?.complaintsByMinistere || [];
       const barData = {
-        labels: complaintStats.bySector?.labels || ['Transport', 'Eau', 'Énergie', 'Santé', 'Éducation', 'Environnement'],
+        labels: ministeresData.slice(0, 6).map(item => item.label),
         datasets: [
           {
             label: 'Nombre de plaintes',
-            data: complaintStats.bySector?.data || [245, 198, 176, 132, 115, 98],
+            data: ministeresData.slice(0, 6).map(item => item.count),
             backgroundColor: [
               'rgba(59, 130, 246, 0.8)',
               'rgba(16, 185, 129, 0.8)',
@@ -147,8 +146,7 @@ export default function ApercuGeneral() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await refresh();
-      await loadChartData();
+      await fetchAdvancedStats(selectedPeriod);
     } finally {
       setIsRefreshing(false);
     }
@@ -156,33 +154,34 @@ export default function ApercuGeneral() {
 
   const handlePeriodChange = (period) => {
     setSelectedPeriod(period);
+    fetchAdvancedStats(period);
   };
 
   // Cartes de statistiques
   const statCards = [
     {
       title: 'Total Plaintes',
-      value: stats.totalPlaintes,
+      value: stats.overview?.complaints?.total || 0,
       icon: AlertTriangle,
       color: 'blue',
       bgColor: 'bg-blue-50',
       iconColor: 'text-blue-600',
-      change: '+12%',
+      change: `+${stats.trends?.complaintsGrowth || 0}%`,
       changeType: 'increase'
     },
     {
       title: 'Plaintes Résolues',
-      value: stats.plaintesResolues,
+      value: stats.overview?.complaints?.resolved || 0,
       icon: CheckCircle,
       color: 'green',
       bgColor: 'bg-green-50',
       iconColor: 'text-green-600',
-      change: '+8%',
+      change: `${stats.performance?.resolutionRate || 0}%`,
       changeType: 'increase'
     },
     {
       title: 'En Attente',
-      value: stats.plaintesEnAttente,
+      value: stats.overview?.complaints?.pending || 0,
       icon: Clock,
       color: 'yellow',
       bgColor: 'bg-yellow-50',
@@ -192,7 +191,7 @@ export default function ApercuGeneral() {
     },
     {
       title: 'Utilisateurs',
-      value: stats.totalUtilisateurs,
+      value: stats.overview?.users?.total || 0,
       icon: Users,
       color: 'purple',
       bgColor: 'bg-purple-50',
@@ -202,12 +201,40 @@ export default function ApercuGeneral() {
     }
   ];
 
-  // Dernières activités
+  // Dernières activités (basées sur les données réelles)
   const recentActivities = [
-    { id: 1, type: 'Plainte résolue', description: 'Problème de transport #1254', time: '5 min', icon: CheckCircle, color: 'text-green-600' },
-    { id: 2, type: 'Nouvelle plainte', description: 'Fuite d\'eau signalée #1255', time: '12 min', icon: AlertTriangle, color: 'text-blue-600' },
-    { id: 3, type: 'Utilisateur ajouté', description: 'Nouvel utilisateur inscrit', time: '25 min', icon: Users, color: 'text-purple-600' },
-    { id: 4, type: 'Plainte rejetée', description: 'Plainte #1250 rejetée', time: '1h', icon: XCircle, color: 'text-red-600' },
+    { 
+      id: 1, 
+      type: 'Plainte résolue', 
+      description: `${stats.overview?.complaints?.resolved || 0} plaintes résolues`, 
+      time: '5 min', 
+      icon: CheckCircle, 
+      color: 'text-green-600' 
+    },
+    { 
+      id: 2, 
+      type: 'Nouvelle plainte', 
+      description: `${stats.overview?.complaints?.new || 0} nouvelles plaintes`, 
+      time: '12 min', 
+      icon: AlertTriangle, 
+      color: 'text-blue-600' 
+    },
+    { 
+      id: 3, 
+      type: 'Utilisateurs actifs', 
+      description: `${stats.overview?.users?.active || 0} utilisateurs actifs`, 
+      time: '25 min', 
+      icon: Users, 
+      color: 'text-purple-600' 
+    },
+    { 
+      id: 4, 
+      type: 'Plaintes rejetées', 
+      description: `${stats.overview?.complaints?.rejected || 0} plaintes rejetées`, 
+      time: '1h', 
+      icon: XCircle, 
+      color: 'text-red-600' 
+    },
   ];
 
   if (loading) {
@@ -222,6 +249,28 @@ export default function ApercuGeneral() {
             <p className="text-xl text-gray-700 font-semibold mb-2">Chargement de l'aperçu général...</p>
             <p className="text-sm text-gray-500">Veuillez patienter</p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-red-100 flex items-center justify-center p-6">
+        <div className="text-center bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-2xl max-w-md border border-red-200">
+          <div className="bg-gradient-to-br from-red-500 to-red-600 p-6 rounded-2xl w-24 h-24 mx-auto mb-6 flex items-center justify-center shadow-lg">
+            <AlertTriangle className="h-12 w-12 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Erreur de chargement</h2>
+          <p className="text-gray-600 mb-6 leading-relaxed">{error}</p>
+          <button 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 font-semibold disabled:opacity-50"
+          >
+            <RefreshCw className={`w-5 h-5 mr-2 inline ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Actualisation...' : 'Réessayer'}
+          </button>
         </div>
       </div>
     );
@@ -251,11 +300,20 @@ export default function ApercuGeneral() {
                 onChange={(e) => handlePeriodChange(e.target.value)}
                 className="px-4 py-3 border-2 border-gray-200/50 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white/50 backdrop-blur-sm"
               >
-                <option value="7j">7 derniers jours</option>
-                <option value="30j">30 derniers jours</option>
-                <option value="90j">90 derniers jours</option>
-                <option value="1an">1 an</option>
+                <option value="7d">7 derniers jours</option>
+                <option value="30d">30 derniers jours</option>
+                <option value="90d">90 derniers jours</option>
+                <option value="1y">1 an</option>
               </select>
+              
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all duration-300 shadow-lg disabled:opacity-50"
+              >
+                <RefreshCw className={`w-5 h-5 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Actualisation...' : 'Actualiser'}
+              </button>
             </div>
           </div>
 
@@ -294,51 +352,55 @@ export default function ApercuGeneral() {
         {/* Graphiques */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Graphique linéaire */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-900">Évolution des plaintes</h2>
               <Activity className="w-5 h-5 text-gray-400" />
             </div>
             <div className="h-80">
-              <Line 
-                data={chartData.line} 
-                options={{ 
-                  responsive: true, 
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'bottom',
+              {chartData.line && (
+                <Line 
+                  data={chartData.line} 
+                  options={{ 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        position: 'bottom',
+                      },
                     },
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                      },
                     },
-                  },
-                }} 
-              />
+                  }} 
+                />
+              )}
             </div>
           </div>
 
           {/* Graphique en secteurs */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-900">Répartition des statuts</h2>
               <BarChart3 className="w-5 h-5 text-gray-400" />
             </div>
             <div className="h-80 flex items-center justify-center">
-              <Doughnut 
-                data={chartData.doughnut} 
-                options={{ 
-                  responsive: true, 
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'bottom',
+              {chartData.doughnut && (
+                <Doughnut 
+                  data={chartData.doughnut} 
+                  options={{ 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        position: 'bottom',
+                      },
                     },
-                  },
-                }} 
-              />
+                  }} 
+                />
+              )}
             </div>
           </div>
         </div>
@@ -346,36 +408,38 @@ export default function ApercuGeneral() {
         {/* Graphique en barres et activités récentes */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Graphique en barres */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Plaintes par secteur</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Plaintes par ministère</h2>
               <TrendingUp className="w-5 h-5 text-gray-400" />
             </div>
             <div className="h-80">
-              <Bar 
-                data={chartData.bar} 
-                options={{ 
-                  responsive: true, 
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      display: false,
+              {chartData.bar && (
+                <Bar 
+                  data={chartData.bar} 
+                  options={{ 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        display: false,
+                      },
                     },
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                      },
                     },
-                  },
-                }} 
-              />
+                  }} 
+                />
+              )}
             </div>
           </div>
 
           {/* Activités récentes */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Activités récentes</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Statistiques récentes</h2>
               <Calendar className="w-5 h-5 text-gray-400" />
             </div>
             <div className="space-y-4">
@@ -387,14 +451,14 @@ export default function ApercuGeneral() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900">{activity.type}</p>
                     <p className="text-sm text-gray-600 truncate">{activity.description}</p>
-                    <p className="text-xs text-gray-400 mt-1">Il y a {activity.time}</p>
+                    <p className="text-xs text-gray-400 mt-1">Mis à jour il y a {activity.time}</p>
                   </div>
                 </div>
               ))}
             </div>
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <button className="w-full text-center text-sm text-blue-600 hover:text-blue-700 font-medium">
-                Voir toutes les activités
+              <button className="w-full text-center text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+                Voir les statistiques complètes
               </button>
             </div>
           </div>

@@ -20,7 +20,7 @@ router.use(authenticateToken);
  *     parameters:
  *       - in: query
  *         name: period
- *         schema:
+ *         schematt:
  *           type: string
  *           enum: [7d, 30d, 90d, 6m, 1y]
  *         description: Période d'analyse
@@ -73,7 +73,7 @@ router.get('/advanced', requirePermission(UserPermissions.VIEW_REPORTS), async (
     // Récupérer les données de référence
     const [usersSnapshot, ministeresSnapshot, directionsSnapshot, servicesSnapshot] = await Promise.all([
       db.collection('admin').get(),
-      db.collection('ministères').get(),
+      db.collection('ministeres').get(),
       db.collection('directions').get(),
       db.collection('services').get()
     ]);
@@ -247,71 +247,6 @@ router.post('/export', requirePermission(UserPermissions.EXPORT_DATA), async (re
   }
 });
 
-/**
- * @swagger
- * /api/statistics/reference-data:
- *   get:
- *     summary: Récupérer toutes les données de référence
- *     tags: [Statistiques]
- *     security:
- *       - BearerAuth: []
- *     responses:
- *       200:
- *         description: Données de référence récupérées
- */
-router.get('/reference-data', requirePermission(UserPermissions.VIEW_REPORTS), async (req, res) => {
-  try {
-    console.log('[REF-DATA] Récupération des données de référence...');
-    
-    // Récupérer toutes les données de référence
-    const [ministeresSnapshot, directionsSnapshot, servicesSnapshot] = await Promise.all([
-      db.collection('ministeres').get(),
-      db.collection('directions').get(),
-      db.collection('services').get()
-    ]);
-    
-    const ministeres = [];
-    ministeresSnapshot.forEach(doc => {
-      const data = { id: doc.id, ...doc.data() };
-      ministeres.push(data);
-      console.log('[REF-DATA] Ministère:', data);
-    });
-    
-    const directions = [];
-    directionsSnapshot.forEach(doc => {
-      const data = { id: doc.id, ...doc.data() };
-      directions.push(data);
-      console.log('[REF-DATA] Direction:', data);
-    });
-    
-    const services = [];
-    servicesSnapshot.forEach(doc => {
-      const data = { id: doc.id, ...doc.data() };
-      services.push(data);
-      console.log('[REF-DATA] Service:', data);
-    });
-    
-    console.log(`[REF-DATA] Total: ${ministeres.length} ministères, ${directions.length} directions, ${services.length} services`);
-    
-    res.json({
-      success: true,
-      data: {
-        ministeres,
-        directions,
-        services
-      }
-    });
-    
-  } catch (error) {
-    console.error('[REF-DATA] Erreur:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erreur lors de la récupération des données de référence',
-      details: error.message
-    });
-  }
-});
-
 // === FONCTIONS UTILITAIRES ADAPTÉES À LA VRAIE STRUCTURE ===
 
 function calculateOverviewStats(complaints, users, ministeres, directions, services) {
@@ -384,12 +319,6 @@ function calculateTimelineStats(complaints, period) {
 }
 
 function calculateDistributionStats(complaints, ministeres, directions, services) {
-  console.log('[DISTRIBUTIONS] Calcul des distributions...');
-  console.log('[DISTRIBUTIONS] Ministères disponibles:', ministeres.length);
-  console.log('[DISTRIBUTIONS] Directions disponibles:', directions.length);
-  console.log('[DISTRIBUTIONS] Services disponibles:', services.length);
-  console.log('[DISTRIBUTIONS] Plaintes à analyser:', complaints.length);
-  
   // Distribution par statut
   const statusDistribution = {
     new: complaints.filter(c => c.status === 'new').length,
@@ -398,34 +327,20 @@ function calculateDistributionStats(complaints, ministeres, directions, services
     rejected: complaints.filter(c => c.status === 'rejected').length
   };
   
-  // Distribution par ministère avec logs détaillés
+  // Distribution par ministère
   const ministereDistribution = {};
   complaints.forEach(c => {
-    console.log('[MINISTERE ssn] Plainte:', c.id, 'ministere ID:', c.ministere);
     const ministere = ministeres.find(m => m.id === c.ministere);
-    const ministereName = ministere ? ministere.nom : `Non spécifié (ID: ${c.ministere || 'vide'})`;
-    console.log('[MINISTERE] Nom trouvé:', ministereName);
+    const ministereName = ministere ? ministere.name : 'Non spécifié';
     ministereDistribution[ministereName] = (ministereDistribution[ministereName] || 0) + 1;
   });
   
-  // Distribution par direction avec logs détaillés
+  // Distribution par direction
   const directionDistribution = {};
   complaints.forEach(c => {
-    console.log('[DIRECTION] Plainte:', c.id, 'direction ID:', c.direction);
     const direction = directions.find(d => d.id === c.direction);
-    const directionName = direction ? direction.nom : `Non spécifiée (ID: ${c.direction || 'vide'})`;
-    console.log('[DIRECTION] Nom trouvé:', directionName);
+    const directionName = direction ? direction.name : 'Non spécifiée';
     directionDistribution[directionName] = (directionDistribution[directionName] || 0) + 1;
-  });
-  
-  // Distribution par service avec logs détaillés
-  const serviceDistribution = {};
-  complaints.forEach(c => {
-    console.log('[SERVICE] Plainte:', c.id, 'service ID:', c.service);
-    const service = services.find(s => s.id === c.service);
-    const serviceName = service ? service.nom : `Non spécifié (ID: ${c.service || 'vide'})`;
-    console.log('[SERVICE] Nom trouvé:', serviceName);
-    serviceDistribution[serviceName] = (serviceDistribution[serviceName] || 0) + 1;
   });
   
   // Distribution par typologie
@@ -450,16 +365,10 @@ function calculateDistributionStats(complaints, ministeres, directions, services
     }
   });
   
-  console.log('[DISTRIBUTIONS] Résultats:');
-  console.log('- Ministères:', Object.keys(ministereDistribution));
-  console.log('- Directions:', Object.keys(directionDistribution));
-  console.log('- Services:', Object.keys(serviceDistribution));
-  
   return {
     byStatus: statusDistribution,
     byMinistere: ministereDistribution,
     byDirection: directionDistribution,
-    byService: serviceDistribution,
     byTypology: typologyDistribution,
     byGeography: geographicDistribution
   };

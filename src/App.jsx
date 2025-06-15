@@ -1,53 +1,83 @@
-import { useState } from 'react'
 import './App.css'
-import Acceuil from './pages/accueil'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import Page2 from './pages/page2'
-import AdminDashboard from './pages/AdminDashboard'
-import NouveauTypePlainte from './pages/NouveauTypePlainte'
-import ListeTypesPlainte from './pages/ListeTypesPlainte'
-import NouveauTypeCible from './pages/NouveauTypeCible'
-import ListeTypesCible from './pages/ListeTypesCible'
-import ToutesPlaintes from './pages/ToutesPlaintes'
-import PlaintesEnAttente from './pages/PlaintesEnAttente'
-import PlaintesEnTraitement from './pages/PlaintesEnTraitement'
-import PlaintesResolues from './pages/PlaintesResolues'
-import PlaintesRejetees from './pages/PlaintesRejetees'
-import NouveauSecteur from './pages/NouveauSecteur'
-import ListeSecteurs from './pages/ListeSecteurs'
-import NouveauSousSecteur from './pages/NouveauSousSecteur'
-import ListeSousSecteurs from './pages/ListeSousSecteurs'
-import SousSecteurs from './pages/SousSecteurs'
-import NouvelleStructure from './pages/NouvelleStructure'
-import ListeStructures from './pages/ListeStructures'
-import ApercuGeneral from './pages/ApercuGeneral'
-import Utilisateurs from './pages/Utilisateurs'
-import TestUsers from './pages/TestUsers'
-import Statistiques from './pages/Statistiques'
-import StatistiquesCompletes from './pages/StatistiquesCompletes'
-import ExporterDonnees from './pages/ExporterDonnees'
-import ProfilAdmin from './pages/ProfilAdmin'
-import { ThemeProvider } from './pages/ThemeContext'
-import ParametresAdmin from './pages/ParametresAdmin'
-import GestionAdmins from './pages/GestionAdmins'
-import NouvelAdmin from './pages/NouvelAdmin'
-import GestionPermissions from './pages/GestionPermissions'
-import GestionAdminsPermissions from './pages/GestionAdminsPermissions'
-import GestionAdminsHistorique from './pages/GestionAdminsHistorique'
-import CiblesTypes from './pages/CiblesTypes'
-import Dashboard from './pages/Dashboard'
 import { AuthProvider } from './hooks/useAuth'
 import ProtectedRoute from './components/ProtectedRoute'
 
+// Import depuis la nouvelle structure organisée
+import { 
+  // Dashboard
+  Dashboard,
+  AdminDashboard,
+  ApercuGeneral,
+  Accueil
+} from './pages/dashboard'
+
+import {
+  // Statistiques
+  Statistiques,
+  StatistiquesCompletes,
+  ExporterDonnees
+} from './pages/statistiques'
+
+import {
+  // Plaintes
+  ToutesPlaintes,
+  PlaintesEnAttente,
+  PlaintesEnTraitement,
+  PlaintesResolues,
+  PlaintesRejetees
+} from './pages/plaintes'
+
+import {
+  // Administration
+  GestionAdmins,
+  NouvelAdmin,
+  GestionPermissions,
+  GestionAdminsPermissions,
+  GestionAdminsHistorique,
+  Utilisateurs,
+  TestUsers
+} from './pages/administration'
+
+import {
+  // Structures
+  ListeStructures,
+  NouvelleStructure,
+  ListeSecteurs,
+  NouveauSecteur,
+  SousSecteurs,
+  ListeSousSecteurs,
+  NouveauSousSecteur
+} from './pages/structures'
+
+import {
+  // Configuration
+  ListeTypesPlainte,
+  NouveauTypePlainte,
+  CiblesTypes,
+  ListeTypesCible,
+  NouveauTypeCible,
+  ParametresAdmin,
+  Page2
+} from './pages/configuration'
+
+import {
+  // Profil
+  ProfilAdmin,
+  ThemeContext
+} from './pages/profil'
+
+// Import du ThemeProvider depuis le contexte
+import { ThemeProvider } from './pages/profil/ThemeContext'
+
 function App() {
-  const [count, setCount] = useState(0)
 
   return (
     <BrowserRouter>
       <AuthProvider>
         <ThemeProvider>
           <Routes>
-            <Route path="/" element={<Acceuil />} />
+            <Route path="/" element={<Accueil />} />
             <Route path="/Page2" element={<Page2 />} />
             {/* Layout persistant pour toute la partie admin - PROTÉGÉ */}
             <Route path="/admin" element={

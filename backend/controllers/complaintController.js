@@ -63,13 +63,18 @@ import {
  */
 export const getComplaints = async (req, res) => {
   try {
+    console.log('[COMPLAINTS] Récupération des plaintes avec nouvelle structure');
+    
     const { 
       status, 
-      complaintType,
-      targetType,
-      ministereId, 
-      priority, 
-      isDraft = false,
+      type, // Nouveau: type unifié
+      secteur, // Nouveau: secteur
+      ministere, // Nouveau: ID ministère direct
+      direction, // Nouveau: ID direction
+      service, // Nouveau: ID service
+      priorite, // Nouveau: priorité unifiée
+      userId, // Nouveau: filtrer par utilisateur
+      isPrivee, // Nouveau: structure privée
       limit = 50, 
       page = 1,
       assignedTo 
@@ -83,20 +88,21 @@ export const getComplaints = async (req, res) => {
     
     let query = db.collection('complaints');
     
-    // Filtres
+    // === FILTRES NOUVELLE STRUCTURE ===
     if (status) query = query.where('status', '==', status);
-    if (complaintType) query = query.where('complaintType', '==', complaintType);
-    if (targetType) query = query.where('targetType', '==', targetType);
-    if (priority) query = query.where('priority', '==', priority);
+    if (type) query = query.where('type', '==', type);
+    if (secteur) query = query.where('secteur', '==', secteur);
+    if (priorite) query = query.where('priorite', '==', priorite);
     if (assignedTo) query = query.where('assignedTo', '==', assignedTo);
-    if (ministereId) query = query.where('publicStructure.ministereId', '==', ministereId);
-    
-    // Filtrer par brouillons ou plaintes finalisées
-    query = query.where('isDraft', '==', isDraft === 'true');
+    if (ministere) query = query.where('ministere', '==', ministere);
+    if (direction) query = query.where('direction', '==', direction);
+    if (service) query = query.where('service', '==', service);
+    if (userId) query = query.where('userId', '==', userId);
+    if (isPrivee !== undefined) query = query.where('isPrivee', '==', isPrivee === 'true');
     
     // Si l'utilisateur n'est pas admin, ne montrer que ses plaintes
     if (!hasPermission(req.user, UserPermissions.MANAGE_COMPLAINTS)) {
-      query = query.where('submittedBy', '==', req.user.uid);
+      query = query.where('userId', '==', req.user.uid);
     }
     
     // Pagination
@@ -105,25 +111,79 @@ export const getComplaints = async (req, res) => {
     
     const snapshot = await query.get();
     const complaints = [];
+    
     snapshot.forEach(doc => {
-      complaints.push({ id: doc.id, ...doc.data() });
+      const data = doc.data();
+      // Adapter les données pour compatibilité
+      const adaptedComplaint = {
+        id: doc.id,
+        // Champs principaux
+        title: data.title,
+        description: data.description,
+        status: data.status,
+        
+        // Géolocalisation
+        latitude: data.latitude,
+        longitude: data.longitude,
+        address: data.address,
+        
+        // Classification
+        type: data.type,
+        secteur: data.secteur,
+        sousSecteur: data.sousSecteur,
+        typologies: data.typologies || [],
+        priorite: data.priorite,
+        
+        // Structure administrative
+        ministere: data.ministere,
+        direction: data.direction,
+        service: data.service,
+        
+        // Structure privée
+        isPrivee: data.isPrivee,
+        nomStructurePrivee: data.nomStructurePrivee,
+        emailStructurePrivee: data.emailStructurePrivee,
+        telephoneStructurePrivee: data.telephoneStructurePrivee,
+        
+        // Utilisateur et dates
+        userId: data.userId,
+        createdAt: data.createdAt?.toDate?.() || data.createdAt,
+        lastUpdated: data.lastUpdated?.toDate?.() || data.lastUpdated,
+        resolvedAt: data.resolvedAt?.toDate?.() || data.resolvedAt,
+        
+        // Médias
+        media: data.media || [],
+        
+        // Workflow
+        assignedTo: data.assignedTo,
+        
+        // Métadonnées
+        source: data.source || 'mobile'
+      };
+      
+      complaints.push(adaptedComplaint);
     });
     
     // Compter le total pour la pagination
     let countQuery = db.collection('complaints');
     if (status) countQuery = countQuery.where('status', '==', status);
-    if (complaintType) countQuery = countQuery.where('complaintType', '==', complaintType);
-    if (targetType) countQuery = countQuery.where('targetType', '==', targetType);
-    if (priority) countQuery = countQuery.where('priority', '==', priority);
-    if (ministereId) countQuery = countQuery.where('publicStructure.ministereId', '==', ministereId);
-    countQuery = countQuery.where('isDraft', '==', isDraft === 'true');
+    if (type) countQuery = countQuery.where('type', '==', type);
+    if (secteur) countQuery = countQuery.where('secteur', '==', secteur);
+    if (priorite) countQuery = countQuery.where('priorite', '==', priorite);
+    if (ministere) countQuery = countQuery.where('ministere', '==', ministere);
+    if (direction) countQuery = countQuery.where('direction', '==', direction);
+    if (service) countQuery = countQuery.where('service', '==', service);
+    if (userId) countQuery = countQuery.where('userId', '==', userId);
+    if (isPrivee !== undefined) countQuery = countQuery.where('isPrivee', '==', isPrivee === 'true');
     
     if (!hasPermission(req.user, UserPermissions.MANAGE_COMPLAINTS)) {
-      countQuery = countQuery.where('submittedBy', '==', req.user.uid);
+      countQuery = countQuery.where('userId', '==', req.user.uid);
     }
     
     const countSnapshot = await countQuery.get();
     const total = countSnapshot.size;
+    
+    console.log(`[COMPLAINTS] Récupéré ${complaints.length} plaintes sur ${total} total`);
     
     res.json({
       success: true,
@@ -133,11 +193,25 @@ export const getComplaints = async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         totalPages: Math.ceil(total / limit)
+      },
+      filters: {
+        status,
+        type,
+        secteur,
+        ministere,
+        direction,
+        service,
+        priorite,
+        isPrivee
       }
     });
   } catch (error) {
-    console.error('Erreur lors de la récupération des plaintes:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    console.error('[COMPLAINTS] Erreur lors de la récupération des plaintes:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur',
+      details: error.message
+    });
   }
 };
 
@@ -479,15 +553,84 @@ export const finalizeDraft = async (req, res) => {
  */
 export const getComplaintTypes = async (req, res) => {
   try {
+    console.log('[COMPLAINTS] Récupération des types selon nouvelle structure');
+    
+    // Types selon la nouvelle structure unifiée
+    const types = [
+      'Infrastructure',
+      'Service Public',
+      'Administration',
+      'Sécurité',
+      'Santé',
+      'Éducation',
+      'Transport',
+      'Environnement',
+      'Justice',
+      'Économie',
+      'Général'
+    ];
+    
+    const secteurs = [
+      'Transport',
+      'Santé',
+      'Éducation',
+      'Infrastructure',
+      'Sécurité',
+      'Justice',
+      'Environnement',
+      'Administration',
+      'Économie',
+      'Social',
+      'Culture',
+      'Sport'
+    ];
+    
+    const priorites = [
+      'basse',
+      'moyenne', 
+      'elevee',
+      'urgente',
+      'critique'
+    ];
+    
+    const statuts = [
+      'new',
+      'in_progress',
+      'resolved',
+      'rejected'
+    ];
+    
+    const typologies = [
+      'Exposé',
+      'Réclamation',
+      'Demande',
+      'Signalement',
+      'Plainte',
+      'Suggestion',
+      'Information'
+    ];
+    
     res.json({
       success: true,
+      data: {
+        types,
+        secteurs,
+        priorites,
+        statuts,
+        typologies
+      },
+      // Rétrocompatibilité avec l'ancien format
       complaintTypes: Object.values(ComplaintTypes),
       targetTypes: Object.values(TargetTypes),
       submissionTypes: Object.values(SubmissionTypes)
     });
   } catch (error) {
-    console.error('Erreur lors de la récupération des types:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    console.error('[COMPLAINTS] Erreur lors de la récupération des types:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur',
+      details: error.message
+    });
   }
 };
 
@@ -533,25 +676,41 @@ export const getComplaintTypes = async (req, res) => {
  */
 export const updateComplaintStatus = async (req, res) => {
   try {
+    console.log('[COMPLAINTS] Mise à jour statut plainte:', req.params.id);
+    
     const { id } = req.params;
     const { status, comment, assignedTo } = req.body;
     
+    // Validation du statut selon la nouvelle structure
+    const validStatuses = ['new', 'in_progress', 'resolved', 'rejected'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Statut invalide. Doit être l'un de: ${validStatuses.join(', ')}`
+      });
+    }
+    
     if (!hasPermission(req.user, UserPermissions.MANAGE_COMPLAINTS)) {
       return res.status(403).json({ 
+        success: false,
         error: 'Permission insuffisante pour modifier le statut des plaintes' 
       });
     }
     
     const complaintDoc = await db.collection('complaints').doc(id).get();
     if (!complaintDoc.exists) {
-      return res.status(404).json({ error: 'Plainte non trouvée' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'Plainte non trouvée' 
+      });
     }
     
     const complaint = complaintDoc.data();
     
+    // Préparer les données de mise à jour selon la nouvelle structure
     const updateData = {
       status,
-      updatedAt: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(), // Utiliser lastUpdated au lieu de updatedAt
       updatedBy: req.user.uid
     };
     
@@ -559,8 +718,14 @@ export const updateComplaintStatus = async (req, res) => {
       updateData.assignedTo = assignedTo;
     }
     
-    if (status === ComplaintStatus.RESOLVED || status === ComplaintStatus.REJECTED) {
+    // Ajouter resolvedAt si résolu
+    if (status === 'resolved') {
       updateData.resolvedAt = new Date().toISOString();
+    }
+    
+    // Ajouter closedAt si rejeté
+    if (status === 'rejected') {
+      updateData.closedAt = new Date().toISOString();
     }
     
     // Ajouter un commentaire si fourni
@@ -577,7 +742,17 @@ export const updateComplaintStatus = async (req, res) => {
       updateData.comments = [...(complaint.comments || []), newComment];
     }
     
-    // Ajouter à l'historique
+    // Mettre à jour l'historique des statuts selon la nouvelle structure
+    const statusHistoryEntry = {
+      status,
+      timestamp: new Date().toISOString(),
+      userId: req.user.uid,
+      comment: comment || `Statut changé vers ${status}`
+    };
+    
+    updateData.statusHistory = [...(complaint.statusHistory || []), statusHistoryEntry];
+    
+    // Ajouter à l'historique général (rétrocompatibilité)
     updateData.history = [
       ...(complaint.history || []),
       {
@@ -590,14 +765,27 @@ export const updateComplaintStatus = async (req, res) => {
     
     await db.collection('complaints').doc(id).update(updateData);
     
+    console.log(`[COMPLAINTS] Statut mis à jour: ${id} -> ${status}`);
+    
     res.json({
       success: true,
       message: 'Statut de la plainte mis à jour avec succès',
-      data: updateData
+      data: {
+        id,
+        status,
+        lastUpdated: updateData.lastUpdated,
+        resolvedAt: updateData.resolvedAt,
+        closedAt: updateData.closedAt,
+        assignedTo: updateData.assignedTo
+      }
     });
   } catch (error) {
-    console.error('Erreur lors de la mise à jour du statut:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    console.error('[COMPLAINTS] Erreur lors de la mise à jour du statut:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur',
+      details: error.message
+    });
   }
 };
 
@@ -633,27 +821,142 @@ export const updateComplaintStatus = async (req, res) => {
  *       200:
  *         description: Commentaire ajouté avec succès
  */
+/**
+ * Récupérer une plainte spécifique avec la nouvelle structure
+ */
+export const getComplaint = async (req, res) => {
+  try {
+    console.log('[COMPLAINTS] Récupération plainte spécifique:', req.params.id);
+    
+    const { id } = req.params;
+    
+    const doc = await db.collection('complaints').doc(id).get();
+    
+    if (!doc.exists) {
+      return res.status(404).json({
+        success: false,
+        error: 'Plainte non trouvée'
+      });
+    }
+    
+    const data = doc.data();
+    
+    // Vérifier les permissions
+    const canView = hasPermission(req.user, UserPermissions.VIEW_COMPLAINTS) || 
+                   data.userId === req.user.uid;
+    
+    if (!canView) {
+      return res.status(403).json({
+        success: false,
+        error: 'Accès refusé à cette plainte'
+      });
+    }
+    
+    // Adapter les données selon la nouvelle structure
+    const adaptedComplaint = {
+      id: doc.id,
+      // Champs principaux
+      title: data.title,
+      description: data.description,
+      status: data.status,
+      
+      // Géolocalisation
+      latitude: data.latitude,
+      longitude: data.longitude,
+      address: data.address,
+      localisation: data.localisation || {
+        coordonnees: {
+          latitude: data.latitude,
+          longitude: data.longitude
+        },
+        adresse: data.address
+      },
+      
+      // Classification
+      type: data.type,
+      secteur: data.secteur,
+      sousSecteur: data.sousSecteur,
+      typologies: data.typologies || [],
+      priorite: data.priorite,
+      
+      // Structure administrative
+      ministere: data.ministere,
+      direction: data.direction,
+      service: data.service,
+      
+      // Structure privée
+      isPrivee: data.isPrivee,
+      nomStructurePrivee: data.nomStructurePrivee,
+      emailStructurePrivee: data.emailStructurePrivee,
+      telephoneStructurePrivee: data.telephoneStructurePrivee,
+      
+      // Utilisateur et dates
+      userId: data.userId,
+      createdAt: data.createdAt?.toDate?.() || data.createdAt,
+      lastUpdated: data.lastUpdated?.toDate?.() || data.lastUpdated,
+      resolvedAt: data.resolvedAt?.toDate?.() || data.resolvedAt,
+      closedAt: data.closedAt?.toDate?.() || data.closedAt,
+      
+      // Médias
+      media: data.media || [],
+      pieceJointe: data.pieceJointe || [],
+      
+      // Workflow
+      assignedTo: data.assignedTo,
+      statusHistory: data.statusHistory || [],
+      comments: data.comments || [],
+      
+      // Métadonnées
+      source: data.source || 'mobile',
+      version: data.version || '1.0',
+      tags: data.tags || [],
+      visibility: data.visibility || 'public'
+    };
+    
+    console.log('[COMPLAINTS] Plainte récupérée:', id);
+    
+    res.json({
+      success: true,
+      data: adaptedComplaint
+    });
+    
+  } catch (error) {
+    console.error('[COMPLAINTS] Erreur récupération plainte:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération de la plainte',
+      details: error.message
+    });
+  }
+};
+
 export const addComplaintComment = async (req, res) => {
   try {
+    console.log('[COMPLAINTS] Ajout commentaire plainte:', req.params.id);
+    
     const { id } = req.params;
     const { text, isInternal = false } = req.body;
     
     if (!text || text.trim().length === 0) {
       return res.status(400).json({ 
+        success: false,
         error: 'Le texte du commentaire est requis' 
       });
     }
     
     const complaintDoc = await db.collection('complaints').doc(id).get();
     if (!complaintDoc.exists) {
-      return res.status(404).json({ error: 'Plainte non trouvée' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'Plainte non trouvée' 
+      });
     }
     
     const complaint = complaintDoc.data();
     
-    // Vérifier les permissions
+    // Vérifier les permissions selon la nouvelle structure
     const canComment = hasPermission(req.user, UserPermissions.MANAGE_COMPLAINTS) || 
-                      complaint.submittedBy === req.user.uid;
+                      complaint.userId === req.user.uid;
     
     if (!canComment) {
       return res.status(403).json({ 
